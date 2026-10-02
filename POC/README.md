@@ -22,12 +22,16 @@ No se ha publicado automaticamente en ningun proveedor. El atributo `noindex` so
 
 ## Recorrido
 
+La captura usa un lienzo de decisiones: una pregunta principal por vista, sin dropdowns ni avance automatico. Las seis etapas se mantienen estables; las preguntas condicionales aparecen solo cuando aplican. La ficha "Your starting point" acumula respuestas editables y se contrae en movil. Las respuestas guardadas por la primera version siguen disponibles.
+
+El presupuesto se elige con una banda ajustable en USD, con entrada exacta opcional sin limite de USD 20.000 y rango opcional. La posicion inicial de la banda no constituye una respuesta. El alcance por persona/grupo se elige explicitamente y los conceptos incluidos se capturan en una decision posterior. Grupo y duracion utilizan contadores editables. Ritmo utiliza agendas ilustradas con texto accesible. Fechas concretas omiten la pregunta adicional de duracion; las horas son opcionales y nunca se supone medianoche. Inspiracion permite omitir el bloque practico completo sin eliminar necesidades personales.
+
 - Landing inspirada en `assets/screen-example.png`, sin viajes misteriosos ni promesas de reservas o entregas ficticias.
 - Entradas de inspiracion y viaje concreto.
 - Diez escenas, orden aleatorio conservado por sesion, hasta tres intereses contando el personalizado, prioridad opcional.
 - Autonomia, comodidad, un seguimiento gastronomico condicional y recuerdo opcional sin interpretacion automatica.
 - Motivaciones, ritmo, historial y alcance de repeticion.
-- Origen de texto libre, duracion en horas/dias/semanas/meses, fechas con horas o meses, trayecto, transporte, grupo y presupuesto con alcance y componentes.
+- Origen en una unica entrada "ciudad, pais", duracion en horas/dias/semanas/meses, fechas con horas opcionales o meses, trayecto, transporte, grupo y presupuesto con alcance y componentes.
 - Necesidades condicionales con alcance, limite firme/preferencia flexible/verificacion y marcado explicito de necesidades esenciales.
 - Revision editable de preferencias, contexto, condiciones y desconocidos; categoria secundaria solo con respaldo y rechazo opcional.
 - Confirmacion versionada y prompt final completo para copiar o descargar; exportacion JSON privada de respuestas y orden mostrado.

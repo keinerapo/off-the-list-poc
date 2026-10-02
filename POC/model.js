@@ -164,7 +164,8 @@ export function buildProfile(state = {}) {
   trip.push('Personal preferences belong to the respondent; companion information is indirect and does not establish individual companion profiles.');
 
   if (s.budgetMode === 'amount' || s.budgetMode === 'range') {
-    conditions.push(`Budget scope: USD ${s.budgetScope === 'person' ? 'per person' : 'for the whole group'}; do not interchange these scopes.`);
+    if (s.budgetScope === 'person' || s.budgetScope === 'group') conditions.push(`Budget scope: USD ${s.budgetScope === 'person' ? 'per person' : 'for the whole group'}; do not interchange these scopes.`);
+    else unknowns.push('Budget scope: unknown; clarify per person versus whole group before estimating affordability.');
     if (s.budgetMode === 'amount') describe(conditions, 'Budget upper cap (USD; firm by default, not required spending)', s.budgetMin);
     else {
       describe(conditions, 'Budget target range lower end (USD; not required spending)', s.budgetMin);

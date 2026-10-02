@@ -6,3 +6,79 @@
 @media(max-width:900px){.site-header{padding:25px 32px}nav{gap:18px}.pilot-label{display:none}.hero{padding:190px 32px 90px;min-height:630px}.hero-copy{width:62%}.hero-person{right:-1%;height:500px}.hero h1{font-size:48px}.hero p{max-width:340px;font-size:16px}.principles{margin:-25px 24px 0}.scene-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.site-header{padding:20px}.brand{width:58px;height:58px}nav>a:not(.button){display:none}.button.small{font-size:11px;padding:11px 14px}.hero{margin-top:-100px;padding:150px 24px 270px;min-height:auto}.hero-copy{width:100%}.hero h1{font-size:39px;letter-spacing:-1px;max-width:360px}.hero p{font-size:16px;max-width:300px}.hero-person{height:280px;right:12px;bottom:0}.hero-note{max-width:170px!important;font-size:12px!important}.hero-arc{top:340px;height:450px;width:220%;left:-65%}.hero .actions{align-items:flex-start;flex-direction:column}.principles{grid-template-columns:1fr 1fr;padding:12px;margin:-1px 20px 0;border-radius:20px;gap:14px}.principles>div{padding:8px}.principles>div:nth-child(2){border:0}.principles strong{font-size:21px}.principles span{font-size:9px}.how{margin:50px auto;padding:0 24px}.how-grid,.entry-grid,.review-grid,.choices.columns,.field-row{grid-template-columns:1fr}.how-grid{gap:15px}.shell{margin:20px auto 45px;padding:0 20px}.intro{margin-bottom:25px}.stages{gap:6px;margin-bottom:30px}.stages li{font-size:10px;padding:7px 2px}.scene-grid{gap:10px}.scene img{height:110px}.scene-body{padding:12px}.scene-title{font-size:16px}.scene p{font-size:12px}.scene-title input{width:16px;height:16px}.form-navigation .button{padding:13px 18px}.category,.review-card{padding:20px}.subpanel{padding:17px}footer{padding:22px;align-items:flex-start;flex-direction:column;gap:4px}.prompt{padding:14px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* The decision canvas keeps secondary details out of the primary reading path. */
+.capturing .site-header{padding-top:22px;padding-bottom:18px}
+.capturing nav .button,.capturing .pilot-label{display:none}
+.decision-shell{margin-top:16px;max-width:1080px}
+.decision-shell.narrow{max-width:860px}
+.decision-shell .stages{justify-content:center;gap:22px;margin-bottom:24px}
+.stages button{background:none;border:0;color:inherit;padding:4px 0;font-size:inherit}
+.trip-sheet{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0;margin:0 0 42px}
+.trip-sheet summary{display:flex;justify-content:space-between;gap:16px;font-size:12px;letter-spacing:.4px;color:var(--ink)}
+.trip-sheet summary span{color:var(--muted)}
+.sheet-items{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px}
+.sheet-items button{border:1px solid var(--line);border-radius:25px;background:#fffdfa;color:var(--ink);padding:8px 12px;font-size:12px;max-width:100%;overflow-wrap:anywhere;text-align:left}
+.sheet-items button:hover{border-color:var(--coral);background:var(--blush)}
+.sheet-items button span{color:var(--dark);margin-left:8px}
+.sheet-items p{font-size:12px;color:var(--muted);margin:0}
+.decision-canvas{animation:arrive .22s ease-out;min-height:420px}
+.decision-canvas>.intro{margin:0 auto 28px;text-align:center}
+.decision-canvas .intro h1{font-size:clamp(34px,4vw,52px)!important;letter-spacing:-1.4px}
+.decision-canvas .intro p:not(.eyebrow){margin-left:auto;margin-right:auto;max-width:48ch;font-size:15px}
+.decision-canvas legend{font-size:12px;color:var(--muted);letter-spacing:.6px;margin-bottom:14px}
+.decision-canvas .choices{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.decision-canvas .choice{border-radius:17px;padding:20px;background:transparent;transition:background .15s,border-color .15s;min-height:68px;align-items:center}
+.decision-canvas .choice:hover{border-color:var(--coral)}
+.decision-canvas .choice:has(input:checked){background:var(--blush)}
+.decision-canvas .choice>span{font-size:18px;line-height:1.3}
+.decision-canvas .choice .hint{display:block;font-size:13px;margin:8px 0 0;line-height:1.5}
+.decision-canvas .choice input{width:16px;height:16px}
+.decision-canvas .chips{display:flex;flex-wrap:wrap;gap:10px}
+.decision-canvas .chips .choice{border-radius:40px;min-height:48px;padding:11px 17px}
+.decision-canvas .chips .choice>span{font-size:14px}
+.decision-canvas .chips .choice:has(.hint){border-radius:18px;flex:1 1 170px}
+.decision-canvas .scene-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.decision-canvas .scene img{height:115px}
+.decision-canvas .scene-body{padding:12px}
+.decision-canvas .scene-title{font-size:16px;min-height:42px}
+.decision-canvas .scene p{font-size:12px;margin-top:8px}
+.decision-canvas .scene:has(input:checked){border:1px solid var(--coral);box-shadow:0 0 0 2px var(--coral);background:var(--blush)}
+.decision-canvas .selection-count{text-align:center;margin:-12px 0 22px;font-size:12px}
+.decision-canvas .field{max-width:100%;font-size:13px}
+.decision-canvas .field input[type=text]{padding:16px 4px;border:0;border-bottom:1px solid #bcb1a8;border-radius:0;background:transparent;font-size:20px}
+.decision-canvas details:not(.trip-sheet){margin:18px 0}
+.decision-canvas details>summary{font-size:13px}
+.decision-canvas .subpanel{background:#f3efe880;border:1px solid #e8e0d7;padding:20px}
+.decision-canvas .form-navigation{margin-top:32px}
+.decision-canvas .step-note{text-align:center;font-size:11px}
+.budget-control{padding:28px 12px 10px;text-align:center}
+.budget-control label{font-size:12px;color:var(--muted)}
+.budget-control output{display:block;font-size:clamp(32px,6vw,60px);letter-spacing:-2px;line-height:1.2;margin:10px 0 30px;overflow-wrap:anywhere}
+.budget-control input[type=range]{width:100%;height:32px;accent-color:var(--dark);cursor:pointer;min-width:0}
+.budget-control .hint{font-size:12px;max-width:50ch;margin:12px auto 0}
+.number-control{display:flex;align-items:center;justify-content:center;gap:12px;padding:20px 0}
+.number-control button{border:1px solid var(--line);background:transparent;color:var(--dark);border-radius:50%;height:44px;width:44px;flex-shrink:0;font-size:24px}
+.number-control button:hover{border-color:var(--coral);background:var(--blush)}
+.number-control .field{margin:0;max-width:130px;text-align:center}
+.number-control input{border:0;border-bottom:1px solid var(--line);background:transparent;text-align:center;font-size:34px;padding:8px 0;border-radius:0;min-width:0;-moz-appearance:textfield}
+.number-control input::-webkit-inner-spin-button{appearance:none}
+.agenda-card strong{font-weight:400;font-size:20px;display:block}
+.agenda-card svg{display:block;color:var(--dark);margin-top:10px}
+.decision-canvas .review-grid .text-button{font-size:13px}
+.decision-canvas .review-card{background:transparent}
+.decision-canvas .category{background:#fce6e280}
+@keyframes arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(max-width:900px){.decision-canvas .scene-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.decision-shell .stages{gap:12px}}
+@media(max-width:600px){
+  .capturing .site-header{padding:16px 20px}.capturing nav{display:none}
+  .decision-shell .stages{gap:0;justify-content:space-between;margin-bottom:18px}.decision-shell .stages li{font-size:9px;padding:3px 0}
+  .trip-sheet{margin-bottom:28px}.trip-sheet summary{font-size:11px}
+  .decision-canvas>.intro{text-align:left;margin-bottom:24px}.decision-canvas .intro h1{font-size:35px!important}.decision-canvas .intro p:not(.eyebrow){font-size:14px}
+  .decision-canvas .choices{grid-template-columns:1fr}.decision-canvas .choice{padding:17px;min-height:58px}.decision-canvas .choice>span{font-size:17px}
+  .decision-canvas .chips{display:flex}.decision-canvas .chips .choice{padding:11px 14px}.decision-canvas .chips .choice>span{font-size:13px}
+  .decision-canvas .scene-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.decision-canvas .scene img{height:106px}.decision-canvas .scene-title{font-size:15px}
+  .decision-canvas .selection-count{text-align:left;margin-top:0}.decision-canvas .field-row{grid-template-columns:1fr}
+  .decision-canvas .number-control{padding:10px 0}.budget-control{padding:20px 0 5px}.budget-control output{font-size:42px}.decision-canvas .form-navigation{margin-top:24px}.decision-canvas .step-note{line-height:1.5}
+}
+@media(prefers-reduced-motion:reduce){.decision-canvas{animation:none}.decision-canvas .choice{transition:none}}

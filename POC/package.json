@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test model.test.js"
+    "test": "node --test model.test.js canvas.test.js"
   }
 }

@@ -204,3 +204,9 @@ test('departure and return window defines duration when not separately entered',
   assert.match(profile.conditions.join('\n'), /duration is defined by the departure/);
   assert.ok(!profile.unknowns.some(line => line.startsWith('Full trip duration: unknown')));
 });
+
+test('missing budget scope is never interpreted as a whole-group budget', () => {
+  const profile = buildProfile({ budgetMode: 'amount', budgetMin: '1500', budgetScope: '' });
+  assert.match(profile.unknowns.join('\n'), /Budget scope: unknown/);
+  assert.ok(!profile.conditions.some(line => line.includes('USD for the whole group')));
+});

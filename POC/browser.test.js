@@ -57,6 +57,7 @@ const hashFor = id => id === 'review' ? '#form/5' : `#decision/${id}`;
 const input = (page, name, value) => page.locator(`input[name="${name}"]${value === undefined ? '' : `[value="${value}"]`}`);
 const heading = (page, name) => page.getByRole('heading', { name, exact: true }).waitFor();
 const submit = page => page.locator('#capture button[type="submit"]');
+const badge = (page, field, count) => page.locator(`[data-count-field="${field}"][data-count="${count}"]`);
 
 async function layout(page, name) {
   await check(`${name}: no dropdowns or horizontal overflow`, async () => {
@@ -113,6 +114,46 @@ async function shot(page, name) {
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path, fullPage: true });
   screenshots.push(path);
+}
+
+async function rememberCanvas(page) {
+  await page.evaluate(async () => {
+    await Promise.all(document.querySelector('#capture').getAnimations().map(animation => animation.finished));
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.captureNode = document.querySelector('#capture');
+    window.introNode = document.querySelector('#capture .intro');
+    window.sceneImages = [...document.querySelectorAll('.scene img')];
+    window.controlNodes = [...document.querySelectorAll('#capture input, #capture textarea, #capture button')];
+    window.detailsNodes = [...document.querySelectorAll('#capture details')].map(node => ({ node, open: node.open }));
+    window.sheetNode = document.querySelector('#trip-sheet > details');
+    window.captureAnimationStarts = 0;
+    window.captureAnimationListener ||= event => {
+      if (event.target.id === 'capture') window.captureAnimationStarts++;
+    };
+    document.removeEventListener('animationstart', window.captureAnimationListener);
+    document.addEventListener('animationstart', window.captureAnimationListener);
+  });
+}
+
+async function retained(page, name, control, action) {
+  await control.focus();
+  await control.evaluate(node => { window.focusNode = node; });
+  await unchanged(page, action);
+  // Wait beyond the entry animation duration to catch a reconstructed canvas.
+  await delay(300);
+  await check(name, async () => {
+    const identity = await page.evaluate(() => ({
+      capture: window.captureNode.isSameNode(document.querySelector('#capture')),
+      intro: window.introNode.isSameNode(document.querySelector('#capture .intro')),
+      images: window.sceneImages.length === document.querySelectorAll('.scene img').length && window.sceneImages.every((node, index) => node.isSameNode(document.querySelectorAll('.scene img')[index])),
+      controls: window.controlNodes.every(node => [...document.querySelectorAll('#capture input, #capture textarea, #capture button')].some(current => node.isSameNode(current))),
+      details: window.detailsNodes.every(({ node, open }) => node.isConnected && node.open === open),
+      sheet: window.sheetNode.isSameNode(document.querySelector('#trip-sheet > details')) && window.sheetNode.open,
+      focus: window.focusNode.isSameNode(document.activeElement),
+      animationStarts: window.captureAnimationStarts,
+    }));
+    assert.deepEqual(identity, { capture: true, intro: true, images: true, controls: true, details: true, sheet: true, focus: true, animationStarts: 0 });
+  });
 }
 
 async function assets(page, prefix) {
@@ -334,11 +375,11 @@ async function trip(page, prefix, width) {
   // Undecided timing keeps duration in the natural route. Dates are covered separately.
   await next(page, 'duration', prefix);
   await choose(page, 'durationMode', 'range');
-  await fill(page, 'durationMin', '5');
-  await fill(page, 'durationMax', '3');
+  await unchanged(page, () => badge(page, 'durationMin', 5).click());
+  await unchanged(page, () => badge(page, 'durationMax', 3).click());
   await invalid(page, `${prefix}: reversed duration range rejected`, /maximum duration must be at least the minimum/);
-  await fill(page, 'durationMin', '3');
-  await fill(page, 'durationMax', '5');
+  await unchanged(page, () => badge(page, 'durationMin', 3).click());
+  await unchanged(page, () => badge(page, 'durationMax', 5).click());
   await next(page, 'travel', prefix);
   await choose(page, 'travelLimitMode', 'limit');
   await fill(page, 'travelLimit', '0');
@@ -351,8 +392,8 @@ async function trip(page, prefix, width) {
   await choose(page, 'groupKnown', 'yes');
   assert.equal(await input(page, 'groupKnown', 'yes').isChecked(), true);
   assert.equal(await input(page, 'childAges').count(), 0);
-  await unchanged(page, () => page.getByRole('button', { name: 'Increase adults', exact: true }).click());
-  await unchanged(page, () => page.getByRole('button', { name: 'Increase children', exact: true }).click());
+  await unchanged(page, () => badge(page, 'adults', 2).click());
+  await unchanged(page, () => badge(page, 'children', 1).click());
   assert.equal(await input(page, 'adults').inputValue(), '2');
   assert.equal(await input(page, 'children').inputValue(), '1');
   await invalid(page, `${prefix}: ages required only with children`, /Add useful child ages or ranges/);
@@ -360,12 +401,20 @@ async function trip(page, prefix, width) {
   await open(page, 'Group preferences (optional)');
   await fill(page, 'groupNotes', 'One participant needs peanut-free meals.');
   await next(page, 'budget', prefix);
-  await check(`${prefix}: viewing slider does not register amount or scope`, async () => {
+  await check(`${prefix}: unknown budget does not render any amount controls`, async () => {
     assert.equal((await saved(page)).state.budgetMode, 'unknown');
     assert.equal((await saved(page)).state.budgetMin, '');
     assert.equal((await saved(page)).state.budgetScope, '');
     assert.equal(await page.locator('[name="budgetScope"]:checked').count(), 0);
+    assert.equal(await page.locator('[data-budget-slider], [data-budget-band], #budget-display, #budget-max-display, [name="budgetMin"], [name="budgetMax"], [name="budgetScope"], [name="budgetFlexibility"], #capture details').count(), 0);
+  });
+  await choose(page, 'budgetMode', 'amount');
+  await check(`${prefix}: viewing declared slider leaves amount and scope pending`, async () => {
+    assert.equal((await saved(page)).state.budgetMin, '');
+    assert.equal((await saved(page)).state.budgetScope, '');
+    assert.equal(await page.locator('#budget-slider').inputValue(), '100');
     assert.equal(await page.locator('#budget-display').innerText(), 'Choose your amount');
+    assert.equal(await input(page, 'budgetMin').inputValue(), '');
   });
   await shot(page, `${width}-budget`);
   await unchanged(page, async () => {
@@ -385,6 +434,7 @@ async function trip(page, prefix, width) {
   await choose(page, 'budgetScope', 'person');
   await choose(page, 'budgetMode', 'range');
   await open(page, 'Enter an exact amount');
+  await open(page, 'Enter an exact upper amount');
   await fill(page, 'budgetMin', '1800');
   await fill(page, 'budgetMax', '1500');
   await invalid(page, `${prefix}: reversed budget range rejected`, /upper budget cap must be at least the lower amount/);
@@ -520,18 +570,19 @@ async function timing(page, prefix) {
   await fill(page, 'monthEnd', '2027-04');
   await next(page, 'duration', prefix);
   await choose(page, 'durationMode', 'exact');
-  await unchanged(page, () => page.getByRole('button', { name: 'Increase duration', exact: true }).click());
+  await unchanged(page, () => badge(page, 'durationMin', 1).click());
   assert.equal(await input(page, 'durationMin').inputValue(), '1');
-  await unchanged(page, () => page.getByRole('button', { name: 'Decrease duration', exact: true }).click());
-  await invalid(page, `${prefix}: duration counter zero rejected`, /duration greater than zero/);
-  await fill(page, 'durationMin', '4');
+  await page.locator('[data-count-panel="durationMin"] summary').click();
+  await fill(page, 'durationMin', '0');
+  await invalid(page, `${prefix}: exact duration zero rejected`, /duration greater than zero/);
   await choose(page, 'durationUnit', 'weeks');
+  await unchanged(page, () => badge(page, 'durationMin', 4).click());
   await next(page, 'travel', prefix);
   await direct(page, 'duration', prefix);
   await choose(page, 'durationMode', 'range');
-  await unchanged(page, () => page.getByRole('button', { name: 'Increase maximum duration', exact: true }).click());
+  await unchanged(page, () => badge(page, 'durationMax', 1).click());
   assert.equal(await input(page, 'durationMax').inputValue(), '1');
-  await fill(page, 'durationMax', '6');
+  await unchanged(page, () => badge(page, 'durationMax', 6).click());
   await next(page, 'travel', prefix);
   await direct(page, 'review', prefix);
   const range = snapshot(await confirm(page)).structuredInput;
@@ -549,6 +600,7 @@ async function timing(page, prefix) {
 async function budgetAndNeeds(page, prefix) {
   await start(page, 'trip', prefix);
   await direct(page, 'budget', prefix);
+  await choose(page, 'budgetMode', 'amount');
   await unchanged(page, async () => {
     await page.getByRole('slider', { name: 'Adjust budget in USD' }).focus();
     await page.keyboard.press('ArrowRight');
@@ -618,7 +670,7 @@ async function conditionalReset(page, prefix) {
   await fill(page, 'originSearch', 'Lima, Peru');
   await direct(page, 'duration', prefix);
   await choose(page, 'durationMode', 'exact');
-  await fill(page, 'durationMin', '4');
+  await unchanged(page, () => badge(page, 'durationMin', 3).click());
   await choose(page, 'durationMode', 'unknown');
   await direct(page, 'timing', prefix);
   await choose(page, 'periodMode', 'dates');
@@ -629,9 +681,9 @@ async function conditionalReset(page, prefix) {
   await choose(page, 'periodMode', 'unknown');
   await direct(page, 'group', prefix);
   await choose(page, 'groupKnown', 'yes');
-  await unchanged(page, () => page.getByRole('button', { name: 'Increase children', exact: true }).click());
+  await unchanged(page, () => badge(page, 'children', 1).click());
   await fill(page, 'childAges', '8 years');
-  await unchanged(page, () => page.getByRole('button', { name: 'Decrease children', exact: true }).click());
+  await unchanged(page, () => badge(page, 'children', 0).click());
   assert.equal(await input(page, 'childAges').count(), 0);
   await open(page, 'Group preferences (optional)');
   await fill(page, 'groupNotes', 'STALE group note');
@@ -639,6 +691,7 @@ async function conditionalReset(page, prefix) {
   await direct(page, 'budget', prefix);
   await choose(page, 'budgetMode', 'range');
   await open(page, 'Enter an exact amount');
+  await open(page, 'Enter an exact upper amount');
   await fill(page, 'budgetMin', '900');
   await fill(page, 'budgetMax', '1500');
   await choose(page, 'budgetScope', 'person');
@@ -707,6 +760,352 @@ async function legacy(page, prefix) {
   await deletion(page, prefix);
 }
 
+async function stableCanvas(page, prefix) {
+  assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: no-preference)').matches), true);
+  await start(page, 'trip', prefix);
+  assert.notEqual(await page.locator('#capture').evaluate(node => getComputedStyle(node).animationName), 'none', 'Entry animation must be enabled for the flicker regression');
+  await assets(page, prefix);
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  for (const value of ['food', 'nature']) {
+    const control = input(page, 'interests', value);
+    await retained(page, `${prefix}: ${value} selection retains scenes, choices, focus and canvas without animation`, control, () => control.check());
+  }
+  await direct(page, 'motivations', prefix);
+  await open(page, 'Another purpose (optional)');
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  for (const value of ['Rest and a slower pace.', 'Learning and understanding a place.']) {
+    const control = input(page, 'motivations', value);
+    await retained(page, `${prefix}: motivation ${value} retains controls and open details`, control, () => control.check());
+  }
+  assert.equal(await input(page, 'motivationPriority').count(), 3);
+  await rememberCanvas(page);
+  const priority = input(page, 'motivationPriority', 'Learning and understanding a place.');
+  await retained(page, `${prefix}: conditional priority radio retains all controls`, priority, () => priority.check());
+  // Removing the conditional priority may remove its controls, but not the original choices.
+  await page.evaluate(() => { window.controlNodes = window.controlNodes.filter(node => node.name !== 'motivationPriority'); });
+  const rest = input(page, 'motivations', 'Rest and a slower pace.');
+  await retained(page, `${prefix}: removing conditional priority retains original controls`, rest, () => rest.uncheck());
+  assert.equal(await input(page, 'motivationPriority').count(), 0);
+
+  await direct(page, 'travel', prefix);
+  await open(page, 'Transport preferences (optional)');
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  for (const value of ['Plane', 'Train']) {
+    const control = input(page, 'transport', value);
+    await retained(page, `${prefix}: transport ${value} keeps optional details open`, control, () => control.check());
+  }
+  await direct(page, 'documentation', prefix);
+  await open(page, 'Entry and transit documentation (optional)');
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  const provided = input(page, 'documentationMode', 'provided');
+  await retained(page, `${prefix}: documentation conditional fields retain radios and details`, provided, () => provided.check());
+  await rememberCanvas(page);
+  const passports = input(page, 'passports');
+  await retained(page, `${prefix}: field input retains open live trip sheet on mobile and desktop`, passports, () => passports.fill('Colombia'));
+
+  await direct(page, 'needs', prefix);
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  const food = input(page, 'needs', 'food');
+  await retained(page, `${prefix}: conditional need retains original choices`, food, () => food.check());
+  await page.locator('[data-need="food"][data-detail="text"]').fill('Essential peanut allergy: avoid cross-contact.');
+  await rememberCanvas(page);
+  const flexible = page.locator('[data-need="food"][data-detail="type"][value="flexible"]');
+  await retained(page, `${prefix}: essential safeguard retains radio controls and focus`, flexible, () => flexible.click());
+  assert.equal(await page.locator('[data-need="food"][data-detail="type"][value="verify"]').isChecked(), true);
+  assert.equal(await page.locator('[data-need="food"][data-detail="essential"]').isChecked(), true);
+  assert.equal((await saved(page)).state.needDetails.food.type, 'verify');
+  await direct(page, 'review', prefix);
+  await confirm(page);
+  assert.ok((await saved(page)).state.confirmedAt);
+  await direct(page, 'interests', prefix);
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  const stories = input(page, 'interests', 'stories');
+  await retained(page, `${prefix}: editing confirmed choices does not reconstruct form`, stories, () => stories.check());
+  await check(`${prefix}: retained selection still invalidates confirmation`, async () => {
+    assert.equal((await saved(page)).state.confirmedAt, '');
+    await page.goto(`${base}/#result`);
+    await at(page, 'review', prefix);
+    assert.equal(await page.locator('#prompt').count(), 0);
+    await submit(page).click();
+    await page.locator('#form-error').filter({ hasText: 'Review and confirm your answers' }).waitFor();
+    assert.equal(new URL(page.url()).hash, hashFor('review'));
+  });
+}
+
+async function participants(page, prefix, width) {
+  await start(page, 'trip', prefix);
+  await direct(page, 'group', prefix);
+  await choose(page, 'groupKnown', 'yes');
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  await check(`${prefix}: participant badges replace all participant counter buttons`, async () => {
+    assert.equal(await page.locator('[data-counter="adults"], [data-counter="children"]').count(), 0);
+    assert.equal(await page.getByRole('button', { name: /^(Increase|Decrease) (adults|children)$/ }).count(), 0);
+    for (const [field, counts] of [['adults', [1, 2, 3, 4, 5]], ['children', [0, 1, 2, 3, 4, 5]]]) {
+      assert.deepEqual(await page.locator(`[data-count-field="${field}"]`).evaluateAll(nodes => nodes.map(node => Number(node.dataset.count))), counts);
+      for (const count of counts) {
+        const control = badge(page, field, count);
+        assert.equal(await control.getAttribute('aria-label'), `${count} ${field}`);
+        await retained(page, `${prefix}: ${count} ${field} badge retains form and focus`, control, () => control.click());
+        assert.equal((await saved(page)).state[field], String(count));
+        assert.deepEqual(await page.locator(`[data-count-field="${field}"][aria-pressed="true"]`).evaluateAll(nodes => nodes.map(node => node.dataset.count)), [String(count)]);
+      }
+    }
+  });
+  await unchanged(page, () => badge(page, 'children', 0).click());
+  assert.equal(await input(page, 'childAges').count(), 0);
+  for (const [field, count] of [['adults', '8'], ['children', '6']]) {
+    const details = page.locator(`[data-count-panel="${field}"] details`);
+    await details.getByText('Another number', { exact: true }).click();
+    await fill(page, field, count);
+    await unchanged(page, () => input(page, field).press('Tab'));
+    assert.equal(await details.evaluate(node => node.open), true);
+    assert.equal(await page.locator(`[data-count-field="${field}"][aria-pressed="true"]`).count(), 0);
+  }
+  await invalid(page, `${prefix}: custom children require useful ages`, /Add useful child ages or ranges/);
+  await fill(page, 'childAges', '6 to 12 years');
+  await shot(page, `${width}-participants`);
+  await page.reload();
+  await at(page, 'group', prefix);
+  await check(`${prefix}: custom counts and ages persist beyond badge range after reload`, async () => {
+    for (const [field, value] of [['adults', '8'], ['children', '6'], ['childAges', '6 to 12 years']]) {
+      assert.equal(await input(page, field).inputValue(), value);
+      assert.equal((await saved(page)).state[field], value);
+    }
+    for (const field of ['adults', 'children']) {
+      assert.equal(await page.locator(`[data-count-panel="${field}"] details`).evaluate(node => node.open), true);
+      assert.equal(await page.locator(`[data-count-field="${field}"][aria-pressed="true"]`).count(), 0);
+    }
+  });
+  await next(page, 'budget', prefix);
+  await direct(page, 'review', prefix);
+  await check(`${prefix}: final prompt preserves eight adults and six children`, async () => {
+    const data = snapshot(await confirm(page));
+    assert.equal(data.structuredInput.adults, '8');
+    assert.equal(data.structuredInput.children, '6');
+    assert.equal(data.structuredInput.childAges, '6 to 12 years');
+  });
+  await direct(page, 'group', prefix);
+  await unchanged(page, () => badge(page, 'children', 0).click());
+  await check(`${prefix}: zero children clears ages and invalidates confirmed custom group`, async () => {
+    assert.equal(await input(page, 'childAges').count(), 0);
+    const state = (await saved(page)).state;
+    assert.equal(state.adults, '8');
+    assert.equal(state.children, '0');
+    assert.equal(state.childAges, '');
+    assert.equal(state.confirmedAt, '');
+    assert.equal(await badge(page, 'children', 0).getAttribute('aria-pressed'), 'true');
+    await page.reload();
+    await at(page, 'group', prefix);
+    assert.equal(await input(page, 'childAges').count(), 0);
+    assert.equal((await saved(page)).state.childAges, '');
+    await direct(page, 'review', prefix);
+    const data = snapshot(await confirm(page)).structuredInput;
+    assert.equal(data.adults, '8');
+    assert.equal(data.children, '0');
+    assert.equal(data.childAges, '');
+  });
+}
+
+async function durationPresets(page, prefix, width) {
+  await start(page, 'trip', prefix);
+  await direct(page, 'duration', prefix);
+  await choose(page, 'durationMode', 'range');
+  await open(page, 'Your starting point');
+  await check(`${prefix}: no duration counters or assumed quantities`, async () => {
+    assert.equal(await page.locator('[data-counter], button[aria-label^="Increase"], button[aria-label^="Decrease"]').count(), 0);
+    for (const field of ['durationMin', 'durationMax']) assert.equal((await saved(page)).state[field], '');
+  });
+  for (const [unit, counts] of Object.entries({ hours: [2, 4, 6, 12, 24], days: [1, 3, 5, 7, 10, 14], weeks: [1, 2, 3, 4, 6], months: [1, 2, 3, 6, 12] })) {
+    await choose(page, 'durationUnit', unit);
+    await rememberCanvas(page);
+    for (const field of ['durationMin', 'durationMax']) {
+      assert.deepEqual(await page.locator(`[data-count-field="${field}"]`).evaluateAll(nodes => nodes.map(node => Number(node.dataset.count))), counts);
+      for (const count of counts) {
+        const control = badge(page, field, count);
+        const other = field === 'durationMin' ? 'durationMax' : 'durationMin';
+        const before = (await saved(page)).state[other];
+        await retained(page, `${prefix}: ${field} ${count} ${unit} preset retains form and focus`, control, () => control.click());
+        assert.equal((await saved(page)).state[field], String(count));
+        assert.equal((await saved(page)).state[other], before);
+        assert.equal(await input(page, field).inputValue(), String(count));
+        assert.deepEqual(await page.locator(`[data-count-field="${field}"][aria-pressed="true"]`).evaluateAll(nodes => nodes.map(node => node.dataset.count)), [String(count)]);
+      }
+    }
+  }
+  await choose(page, 'durationUnit', 'weeks');
+  await unchanged(page, () => badge(page, 'durationMin', 4).click());
+  await unchanged(page, () => badge(page, 'durationMax', 2).click());
+  await invalid(page, `${prefix}: crossed preset duration range rejected without adjustment`, /maximum duration must be at least the minimum/);
+  assert.equal((await saved(page)).state.durationMin, '4');
+  assert.equal((await saved(page)).state.durationMax, '2');
+  await unchanged(page, () => badge(page, 'durationMin', 2).click());
+  await unchanged(page, () => badge(page, 'durationMax', 4).click());
+  await shot(page, `${width}-duration-range`);
+  await next(page, 'travel', prefix);
+  for (const [unit, value] of [['weeks', '2.5'], ['months', '18']]) {
+    await direct(page, 'duration', prefix);
+    await choose(page, 'durationMode', 'exact');
+    await choose(page, 'durationUnit', unit);
+    const details = page.locator('[data-count-panel="durationMin"] details');
+    if (!await details.evaluate(node => node.open)) await details.locator('summary').click();
+    await open(page, 'Your starting point');
+    await rememberCanvas(page);
+    const exact = input(page, 'durationMin');
+    assert.equal(await exact.getAttribute('step'), 'any');
+    assert.equal(await exact.getAttribute('max'), null);
+    await retained(page, `${prefix}: custom ${value} ${unit} retains exact input and details`, exact, () => exact.fill(value));
+    assert.equal(await page.locator('[data-count-field="durationMin"][aria-pressed="true"]').count(), 0);
+    await page.reload();
+    await at(page, 'duration', prefix);
+    assert.equal(await details.evaluate(node => node.open), true);
+    assert.equal(await exact.inputValue(), value);
+    assert.equal((await saved(page)).state.durationMin, value);
+    await next(page, 'travel', prefix);
+    await direct(page, 'review', prefix);
+    await check(`${prefix}: custom ${value} ${unit} persists in prompt`, async () => {
+      const data = snapshot(await confirm(page));
+      assert.equal(data.structuredInput.durationMin, value);
+      assert.equal(data.structuredInput.durationUnit, unit);
+      assert.match(data.profile.conditions.join('\n'), new RegExp(`Exact full trip duration \\(${unit}[^\\n]*: ${value.replace('.', '\\.')}`));
+    });
+  }
+  await direct(page, 'duration', prefix);
+  await fill(page, 'durationMin', '0');
+  await invalid(page, `${prefix}: zero custom duration rejected`, /duration greater than zero/);
+  await fill(page, 'durationMin', '-2.5');
+  await check(`${prefix}: negative custom duration rejected without discarding edit`, async () => {
+    assert.equal(await input(page, 'durationMin').evaluate(node => node.validity.rangeUnderflow), true);
+    await unchanged(page, () => submit(page).click());
+    assert.equal((await saved(page)).state.durationMin, '-2.5');
+  });
+  await fill(page, 'durationMin', '2.5');
+  await choose(page, 'durationMode', 'range');
+  await page.locator('[data-count-panel="durationMax"] summary').click();
+  await fill(page, 'durationMax', '0');
+  await invalid(page, `${prefix}: zero duration upper bound rejected`, /maximum duration must be at least the minimum/);
+  await fill(page, 'durationMax', '-1');
+  assert.equal(await input(page, 'durationMax').evaluate(node => node.validity.rangeUnderflow), true);
+  await unchanged(page, () => submit(page).click());
+  await fill(page, 'durationMax', '3.5');
+  await next(page, 'travel', prefix);
+}
+
+async function budgetBands(page, prefix, width) {
+  await start(page, 'trip', prefix);
+  await direct(page, 'budget', prefix);
+  await choose(page, 'budgetMode', 'amount');
+  await choose(page, 'budgetMode', 'range');
+  await check(`${prefix}: initial mode switches do not register slider defaults`, async () => {
+    for (const [field, output] of [['budgetMin', 'budget-display'], ['budgetMax', 'budget-max-display']]) {
+      assert.equal((await saved(page)).state[field], '');
+      assert.equal(await input(page, field).inputValue(), '');
+      assert.equal(await page.locator(`[data-budget-slider="${field}"]`).inputValue(), '100');
+      assert.equal(await page.locator(`#${output}`).innerText(), 'Choose your amount');
+    }
+    assert.equal((await saved(page)).state.budgetScope, '');
+  });
+  await invalid(page, `${prefix}: pending budget amount cannot advance`, /Enter a positive budget/);
+  await open(page, 'Enter an exact amount');
+  await open(page, 'Enter an exact upper amount');
+  await open(page, 'Your starting point');
+  await rememberCanvas(page);
+  for (const [field, output] of [['budgetMin', 'budget-display'], ['budgetMax', 'budget-max-display']]) {
+    const slider = page.locator(`[data-budget-slider="${field}"]`);
+    const other = field === 'budgetMin' ? 'budgetMax' : 'budgetMin';
+    const otherOutput = field === 'budgetMin' ? '#budget-max-display' : '#budget-display';
+    for (const method of ['keyboard', 'pointer']) {
+      const before = (await saved(page)).state[other];
+      const beforeOutput = await page.locator(otherOutput).innerText();
+      await slider.evaluate(node => { window.sliderInputEvents = 0; node.addEventListener('input', () => window.sliderInputEvents++); });
+      await retained(page, `${prefix}: ${field} ${method} input retains form and updates independently`, slider, async () => {
+        if (method === 'keyboard') await slider.press('ArrowRight');
+        else {
+          const box = await slider.boundingBox();
+          await page.mouse.click(box.x + box.width * (field === 'budgetMin' ? 0.25 : 0.75), box.y + box.height / 2);
+        }
+      });
+      assert.ok(await page.evaluate(() => window.sliderInputEvents > 0), `${method} must dispatch input`);
+      const amount = await slider.inputValue();
+      if (method === 'keyboard') assert.equal(amount, '150');
+      assert.equal((await saved(page)).state[field], amount);
+      assert.equal(await input(page, field).inputValue(), amount);
+      assert.equal(await page.locator(`#${output}`).innerText(), `USD ${Number(amount).toLocaleString('en-US')}`);
+      assert.equal((await saved(page)).state[other], before);
+      assert.equal(await page.locator(otherOutput).innerText(), beforeOutput);
+    }
+  }
+  await choose(page, 'budgetScope', 'group');
+  await fill(page, 'budgetMin', '1800');
+  await fill(page, 'budgetMax', '1500');
+  for (const [field, output, amount] of [['budgetMin', 'budget-display', '1800'], ['budgetMax', 'budget-max-display', '1500']]) {
+    assert.equal(await page.locator(`[data-budget-slider="${field}"]`).inputValue(), amount);
+    assert.equal(await page.locator(`#${output}`).innerText(), `USD ${Number(amount).toLocaleString('en-US')}`);
+  }
+  await invalid(page, `${prefix}: crossed budget sliders rejected without auto-adjustment`, /upper budget cap must be at least the lower amount/);
+  assert.equal((await saved(page)).state.budgetMin, '1800');
+  assert.equal((await saved(page)).state.budgetMax, '1500');
+  await fill(page, 'budgetMin', '0');
+  await invalid(page, `${prefix}: zero exact budget rejected`, /Enter a positive budget/);
+  await fill(page, 'budgetMin', '-1');
+  assert.equal(await input(page, 'budgetMin').evaluate(node => node.validity.rangeUnderflow), true);
+  await unchanged(page, () => submit(page).click());
+  await fill(page, 'budgetMin', '900');
+  await fill(page, 'budgetMax', '0');
+  await invalid(page, `${prefix}: zero budget cap rejected`, /upper budget cap must be at least the lower amount/);
+  await fill(page, 'budgetMax', '-1');
+  assert.equal(await input(page, 'budgetMax').evaluate(node => node.validity.rangeUnderflow), true);
+  await unchanged(page, () => submit(page).click());
+  await fill(page, 'budgetMax', '27550');
+  await open(page, 'Budget flexibility (optional)');
+  await fill(page, 'budgetFlexibility', 'STALE extra USD 100');
+  await page.reload();
+  await at(page, 'budget', prefix);
+  await check(`${prefix}: exact upper cap beyond 20000 persists without clamping`, async () => {
+    assert.equal(await input(page, 'budgetMax').inputValue(), '27550');
+    assert.equal((await saved(page)).state.budgetMax, '27550');
+    assert.equal(await page.locator('#budget-max-slider').inputValue(), '20000');
+    assert.equal(await page.locator('#budget-max-display').innerText(), 'USD 27,550');
+    assert.equal(await page.locator('[data-budget-band="budgetMax"] details').evaluate(node => node.open), true);
+  });
+  await shot(page, `${width}-budget-range`);
+  await next(page, 'includes', prefix);
+  await choose(page, 'budgetIncludes', 'Food');
+  await direct(page, 'review', prefix);
+  const data = snapshot(await confirm(page));
+  assert.equal(data.structuredInput.budgetMin, '900');
+  assert.equal(data.structuredInput.budgetMax, '27550');
+  assert.match(data.profile.conditions.join('\n'), /Budget target range upper cap[^\n]*27550/);
+  await direct(page, 'budget', prefix);
+  await choose(page, 'budgetMode', 'unknown');
+  await check(`${prefix}: unknown hides all budget controls and clears stale amounts and notes`, async () => {
+    assert.equal(await page.locator('[data-budget-slider], [data-budget-band], output, [name="budgetMin"], [name="budgetMax"], [name="budgetScope"], [name="budgetFlexibility"], #capture details').count(), 0);
+    const state = (await saved(page)).state;
+    for (const field of ['budgetMin', 'budgetMax', 'budgetFlexibility', 'confirmedAt']) assert.equal(state[field], '', field);
+    assert.deepEqual(state.budgetIncludes, []);
+  });
+  await check(`${prefix}: unknown clears stale budget scope`, async () => assert.equal((await saved(page)).state.budgetScope, ''));
+  await page.reload();
+  await at(page, 'budget', prefix);
+  await choose(page, 'budgetMode', 'range');
+  await check(`${prefix}: returning to range assumes no amounts or scope`, async () => {
+    for (const [field, output] of [['budgetMin', 'budget-display'], ['budgetMax', 'budget-max-display']]) {
+      assert.equal((await saved(page)).state[field], '');
+      assert.equal(await input(page, field).inputValue(), '');
+      assert.equal(await page.locator(`#${output}`).innerText(), 'Choose your amount');
+      assert.equal(await page.locator(`[data-budget-slider="${field}"]`).inputValue(), '100');
+    }
+    assert.equal((await saved(page)).state.budgetScope, '');
+    assert.equal(await page.locator('[name="budgetScope"]:checked').count(), 0);
+  });
+}
+
 try {
   for (let attempt = 0; attempt < 100; attempt++) {
     if (server.exitCode !== null) throw new Error(`Server failed: ${serverLog}`);
@@ -732,12 +1131,14 @@ try {
     for (const [flowName, flow] of [
       ['default inspiration', inspiration], ['full trip', trip], ['date and month alternatives', timing],
       ['large budget and restriction types', budgetAndNeeds], ['conditional reset', conditionalReset], ['v1 persistence', legacy],
+      ['stable selection canvas', stableCanvas], ['participant badges and custom counts', participants],
+      ['duration presets and custom quantities', durationPresets], ['independent budget bands', budgetBands],
     ]) {
       const prefix = `${name} / ${flowName}`;
       const context = await browser.newContext({
         viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
         isMobile: mobile, hasTouch: mobile, permissions: ['clipboard-read', 'clipboard-write'],
-        reducedMotion: 'reduce', acceptDownloads: true,
+        reducedMotion: flow === stableCanvas ? 'no-preference' : 'reduce', acceptDownloads: true,
       });
       const page = await context.newPage();
       page.setDefaultTimeout(5000);

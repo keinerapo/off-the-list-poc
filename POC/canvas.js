@@ -25,8 +25,21 @@ function optional(label, content, open = false) {
   return `<details${open ? ' open' : ''}><summary>${esc(label)}</summary><div class="subpanel">${content}</div></details>`;
 }
 
-function counter(state, key, label) {
-  return `<div class="number-control"><button type="button" data-counter="${esc(key)}" data-delta="-1" aria-label="${esc(`Decrease ${label.toLowerCase()}`)}">&minus;</button>${field(state, key, label, 'number', '', state[key], 'inputmode="decimal"')}<button type="button" data-counter="${esc(key)}" data-delta="+1" aria-label="${esc(`Increase ${label.toLowerCase()}`)}">+</button></div>`;
+function durationPicker(state, key, label) {
+  const unit = state.durationUnit || 'days';
+  const values = { hours: [2, 4, 6, 12, 24], days: [1, 3, 5, 7, 10, 14], weeks: [1, 2, 3, 4, 6], months: [1, 2, 3, 6, 12] }[unit];
+  return `<fieldset class="duration-picker" data-count-panel="${key}"><legend>${label}</legend><div class="duration-options">${values.map(value => `<button type="button" data-count-field="${key}" data-count="${value}" aria-label="${value} ${unit} - ${label.toLowerCase()}" aria-pressed="${String(state[key]) === String(value)}"><strong>${value}</strong><span>${unit}</span></button>`).join('')}</div>${optional('Another duration', field(state, key, `${label} - exact quantity`, 'number', `Any positive quantity in ${unit}, including fractions.`, state[key], 'inputmode="decimal"'), filled(state[key]) && !values.includes(Number(state[key])))}</fieldset>`;
+}
+
+function budgetBand(state, key, label) {
+  const id = key === 'budgetMin' ? 'budget-slider' : 'budget-max-slider';
+  const output = key === 'budgetMin' ? 'budget-display' : 'budget-max-display';
+  return `<section class="budget-band" data-budget-band="${key}"><div class="budget-control"><label class="field" for="${id}">${label}</label><output id="${output}" for="${id}" aria-live="polite">${filled(state[key]) ? `USD ${esc(Number(state[key]).toLocaleString('en-US'))}` : 'Choose your amount'}</output><input id="${id}" type="range" min="100" max="20000" step="50" value="${esc(state[key] || 100)}" aria-label="${key === 'budgetMin' ? 'Adjust budget in USD' : 'Adjust upper budget in USD'}" data-budget-slider="${key}"></div>${optional(key === 'budgetMin' ? 'Enter an exact amount' : 'Enter an exact upper amount', field(state, key, key === 'budgetMax' ? 'Upper cap (USD)' : state.budgetMode === 'range' ? 'Lower target amount (USD)' : 'Amount (USD)', 'number'), filled(state[key]))}</section>`;
+}
+
+function participants(state, key, label) {
+  const values = key === 'children' ? [0, 1, 2, 3, 4, 5] : [1, 2, 3, 4, 5];
+  return `<fieldset class="participant-picker" data-count-panel="${key}"><legend>${label}</legend><div class="count-badges">${values.map(value => `<button type="button" class="count-badge" data-count-field="${key}" data-count="${value}" aria-label="${value} ${label.toLowerCase()}" aria-pressed="${String(state[key]) === String(value)}">${value}</button>`).join('')}</div>${optional('Another number', field(state, key, `${label} - exact number`, 'number', 'Use any whole number, including zero.', state[key], 'inputmode="numeric"'), filled(state[key]) && !values.includes(Number(state[key])))}</fieldset>`;
 }
 
 const needs = {
@@ -140,7 +153,7 @@ export const decisions = [
     id: 'duration', stage: 3, title: 'How much time do you have?',
     hint: 'Count the whole trip, from leaving your starting point until returning, including both directions.',
     visible: state => practicalVisible(state) && state.periodMode !== 'dates',
-    render: state => `${choices(state, 'durationMode', 'Time available', [['unknown', 'Not decided yet'], ['exact', 'Exact duration'], ['range', 'A range']], false, true)}${['exact', 'range'].includes(state.durationMode) ? `<div class="field-row">${counter(state, 'durationMin', state.durationMode === 'range' ? 'Minimum duration' : 'Duration')}${state.durationMode === 'range' ? counter(state, 'durationMax', 'Maximum duration') : ''}</div>${choices(state, 'durationUnit', 'Measured in', ['hours', 'days', 'weeks', 'months'], false, true)}${hint('The full duration is firm unless you state a margin. A range does not mean its upper end is always available.')}` : ''}`,
+    render: state => `${choices(state, 'durationMode', 'Time available', [['unknown', 'Not decided yet'], ['exact', 'Exact duration'], ['range', 'A range']], false, true)}${['exact', 'range'].includes(state.durationMode) ? `${choices(state, 'durationUnit', 'Measured in', ['hours', 'days', 'weeks', 'months'], false, true)}<div class="duration-pickers">${durationPicker(state, 'durationMin', state.durationMode === 'range' ? 'Minimum duration' : 'Duration')}${state.durationMode === 'range' ? durationPicker(state, 'durationMax', 'Maximum duration') : ''}</div>${hint('A range does not mean its upper end is always available. Choose each quantity or enter your own.')}` : ''}`,
   },
   {
     id: 'travel', stage: 3, title: 'How far is comfortable?',
@@ -150,14 +163,13 @@ export const decisions = [
   {
     id: 'group', stage: 3, title: 'Who is travelling?',
     hint: 'Unknown does not mean solo. Your preferences do not automatically represent your companions.', visible: practicalVisible,
-    render: state => `${choices(state, 'groupKnown', 'Can you describe the group?', [['yes', 'Add group details'], ['no', 'Not decided yet']], false, true)}${state.groupKnown ? `<div class="field-row">${counter(state, 'adults', 'Adults')}${counter(state, 'children', 'Children')}</div>${Number(state.children) > 0 ? field(state, 'childAges', 'Child ages or age ranges', 'text', 'No names or dates of birth.') : ''}${optional('Group preferences (optional)', text(state, 'groupNotes', 'Shared preferences or companion needs', 'Describe everyone or a specific anonymous participant. Companion information is an indirect report.'), filled(state.groupNotes))}` : ''}`,
+    render: state => `${choices(state, 'groupKnown', 'Can you describe the group?', [['yes', 'Add group details'], ['no', 'Not decided yet']], false, true)}${state.groupKnown ? `<div class="participants-grid">${participants(state, 'adults', 'Adults')}${participants(state, 'children', 'Children')}</div>${Number(state.children) > 0 ? field(state, 'childAges', 'Child ages or age ranges', 'text', 'No names or dates of birth.') : ''}${optional('Group preferences (optional)', text(state, 'groupNotes', 'Shared preferences or companion needs', 'Describe everyone or a specific anonymous participant. Companion information is an indirect report.'), filled(state.groupNotes))}` : ''}`,
   },
   {
     id: 'budget', stage: 3, title: 'What budget should guide us?',
     hint: 'Amounts are in USD. An upper amount is a firm cap, not required spending.', visible: practicalVisible,
     render(state) {
-      const declared = ['amount', 'range'].includes(state.budgetMode) && filled(state.budgetMin);
-      return `${choices(state, 'budgetMode', 'Budget shape', [['amount', 'An amount'], ['range', 'A range'], ['unknown', 'Not decided yet']], false, true)}<div class="budget-control"><label class="field" for="budget-slider">${state.budgetMode === 'range' ? 'Lower target amount in USD' : 'Budget amount in USD'}</label><output id="budget-display" for="budget-slider" aria-live="polite">${declared ? `USD ${esc(Number(state.budgetMin).toLocaleString('en-US'))}` : 'Choose your amount'}</output><input id="budget-slider" type="range" min="100" max="20000" step="50" value="${esc(state.budgetMin || 100)}" aria-label="Adjust budget in USD" data-budget-slider="true">${hint('Move the band to choose an amount, or enter any exact value below. Nothing is assumed until you choose.')}</div>${optional('Enter an exact amount', field(state, 'budgetMin', state.budgetMode === 'range' ? 'Lower target amount (USD)' : 'Amount (USD)', 'number'), filled(state.budgetMin))}${state.budgetMode === 'range' ? field(state, 'budgetMax', 'Upper cap (USD)', 'number', 'The upper end is a firm cap, not an obligation to spend.') : ''}${choices(state, 'budgetScope', 'This budget covers', [['group', 'Whole group'], ['person', 'Per person']], false, true)}${optional('Budget flexibility (optional)', field(state, 'budgetFlexibility', 'Explicit flexibility', 'text', 'Only the stated margin may be used, for example up to USD 100 more.'), filled(state.budgetFlexibility))}`;
+      return `${choices(state, 'budgetMode', 'Budget shape', [['amount', 'An amount'], ['range', 'A range'], ['unknown', 'Not decided yet']], false, true)}${['amount', 'range'].includes(state.budgetMode) ? `<div class="budget-bands ${state.budgetMode === 'range' ? 'is-range' : ''}">${budgetBand(state, 'budgetMin', state.budgetMode === 'range' ? 'Lower target amount in USD' : 'Budget amount in USD')}${state.budgetMode === 'range' ? budgetBand(state, 'budgetMax', 'Upper cap in USD') : ''}</div>${hint('Move each band or enter any exact value. No amount is assumed until you choose. The upper end is a firm cap.')}${choices(state, 'budgetScope', 'This budget covers', [['group', 'Whole group'], ['person', 'Per person']], false, true)}${optional('Budget flexibility (optional)', field(state, 'budgetFlexibility', 'Explicit flexibility', 'text', 'Only the stated margin may be used, for example up to USD 100 more.'), filled(state.budgetFlexibility))}` : ''}`;
     },
   },
   {

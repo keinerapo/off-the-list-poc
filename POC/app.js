@@ -60,8 +60,51 @@ function renderForm(focus = true) {
   step = currentDecision === 'review' ? 5 : decision.stage;
   const content = currentDecision === 'review' ? `${review()}<details><summary>Edit a specific answer</summary><div class="sheet-items">${decisionIds(state).map(id => `<button type="button" data-decision="${id}">${esc(decisions.find(d => d.id === id).title)}</button>`).join('')}</div></details>` : `${intro(step < 2 ? 'YOUR USUAL PREFERENCES' : 'FOR THIS TRIP', decision.title, decision.hint)}${renderDecision(currentDecision, state)}`;
   document.body.classList.add('capturing');
-  main.innerHTML = `<section class="shell decision-shell ${currentDecision === 'interests' || currentDecision === 'review' ? '' : 'narrow'}"><ol class="stages" aria-label="Questionnaire stages">${stages.map((s,i) => `<li ${i === step ? 'aria-current="step"' : ''}><button type="button" data-stage="${i}">${s}</button></li>`).join('')}</ol><div id="trip-sheet">${tripSheet()}</div><form id="capture" class="decision-canvas">${content}<div id="form-error" role="alert"></div><div class="form-navigation"><button type="button" class="text-button" data-action="back">&larr; ${currentDecision === 'interests' ? 'Change starting point' : 'Back'}</button><button class="button" type="submit">${step === 5 ? 'Create my prompt' : editingReview ? 'Save & return to review' : 'Continue'} <span aria-hidden="true">&rarr;</span></button></div><p class="step-note">${storageAvailable ? 'Saved in this browser. Pause and return within 7 days.' : 'Not saved: keep this page open.'} No answers sent to AI.</p></form></section>`;
+  const html = `<section class="shell decision-shell ${currentDecision === 'interests' || currentDecision === 'review' ? '' : 'narrow'}"><ol class="stages" aria-label="Questionnaire stages">${stages.map((s,i) => `<li ${i === step ? 'aria-current="step"' : ''}><button type="button" data-stage="${i}">${s}</button></li>`).join('')}</ol><div id="trip-sheet">${tripSheet()}</div><form id="capture" class="decision-canvas">${content}<div id="form-error" role="alert"></div><div class="form-navigation"><button type="button" class="text-button" data-action="back">&larr; ${currentDecision === 'interests' ? 'Change starting point' : 'Back'}</button><button class="button" type="submit">${step === 5 ? 'Create my prompt' : editingReview ? 'Save & return to review' : 'Continue'} <span aria-hidden="true">&rarr;</span></button></div><p class="step-note">${storageAvailable ? 'Saved in this browser. Pause and return within 7 days.' : 'Not saved: keep this page open.'} No answers sent to AI.</p></form></section>`;
+  if (focus) main.innerHTML = html;
+  else updateMarkup(main, html);
   if (focus) { window.scrollTo(0, 0); main.focus({ preventScroll: true }); }
+}
+// Reconcile selection changes in place; only navigation creates a new animated canvas.
+function updateMarkup(root, html) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const key = node => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return node.nodeName;
+    const control = node.matches('label') ? node.querySelector('input,textarea') : node;
+    if (control?.matches('input,textarea')) return `${node.nodeName}:${control.name || control.dataset.need || control.dataset.dateTime}:${control.dataset.detail || ''}:${['radio','checkbox'].includes(control.type) ? control.getAttribute('value') : ''}`;
+    return `${node.nodeName}:${node.id || node.dataset.needPanel || node.dataset.countPanel || node.dataset.budgetBand || node.dataset.count || (node.matches('.trip-sheet') ? 'trip-sheet' : node.matches('fieldset') ? node.querySelector('legend')?.textContent : node.matches('details') ? node.querySelector('summary')?.textContent : '') || ''}`;
+  };
+  function reconcile(parent, desired) {
+    let cursor = parent.firstChild;
+    for (const next of [...desired.childNodes]) {
+      let current = cursor;
+      if (!current || key(current) !== key(next)) {
+        current = [...parent.childNodes].slice(cursor ? [...parent.childNodes].indexOf(cursor) : parent.childNodes.length).find(node => key(node) === key(next));
+        if (current) parent.insertBefore(current, cursor);
+        else { current = next.cloneNode(true); parent.insertBefore(current, cursor); }
+      }
+      if (next.nodeType === Node.TEXT_NODE) {
+        if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
+      } else if (next.nodeType === Node.ELEMENT_NODE) {
+        for (const attr of [...current.attributes]) if (!next.hasAttribute(attr.name) && !(current.matches('details') && attr.name === 'open')) current.removeAttribute(attr.name);
+        for (const attr of next.attributes) if (current.getAttribute(attr.name) !== attr.value && !(current.matches('details') && attr.name === 'open')) current.setAttribute(attr.name, attr.value);
+        if (current.matches('input')) {
+          current.checked = next.checked;
+          if (current.value !== next.value) current.value = next.value;
+        } else if (current.matches('textarea')) {
+          if (current.value !== next.value) current.value = next.value;
+        } else reconcile(current, next);
+      }
+      cursor = current.nextSibling;
+    }
+    while (cursor) { const following = cursor.nextSibling; cursor.remove(); cursor = following; }
+  }
+  reconcile(root, template.content);
+}
+function updateTripSheet() {
+  const root = document.querySelector('#trip-sheet');
+  if (root) updateMarkup(root, tripSheet());
 }
 function tripSheet() {
   const items = [];
@@ -124,7 +167,7 @@ function normalise() {
   if (state.travelLimitMode !== 'limit') state.travelLimit = '';
   if (!state.groupKnown) { state.adults = ''; state.children = ''; state.childAges = ''; state.groupNotes = ''; }
   else if (Number(state.children) === 0) state.childAges = '';
-  if (state.budgetMode === 'unknown') { state.budgetMin = ''; state.budgetMax = ''; state.budgetIncludes = []; state.budgetFlexibility = ''; }
+  if (state.budgetMode === 'unknown') { state.budgetMin = ''; state.budgetMax = ''; state.budgetScope = ''; state.budgetIncludes = []; state.budgetFlexibility = ''; }
   if (state.budgetMode === 'amount') state.budgetMax = '';
   if (state.documentationMode !== 'provided') { state.passports = ''; state.residence = ''; state.permits = ''; state.groupDocuments = ''; }
   if (!state.interests.includes('food')) state.food = '';
@@ -166,12 +209,11 @@ main.addEventListener('input', event => {
   const el = event.target;
   if (el.dataset.budgetSlider) {
     state.confirmedAt = '';
-    if (state.budgetMode === 'unknown') state.budgetMode = 'amount';
-    state.budgetMin = el.value;
-    document.querySelector('#budget-display').textContent = `USD ${Number(el.value).toLocaleString('en-US')}`;
-    const exact = main.querySelector('[name=budgetMin]'); exact.value = el.value;
-    main.querySelector('[name=budgetMode][value=amount]').checked = state.budgetMode === 'amount';
-    save(); document.querySelector('#trip-sheet').innerHTML = tripSheet(); return;
+    const key = el.dataset.budgetSlider;
+    state[key] = el.value;
+    main.querySelector(`[data-budget-band="${key}"] output`).textContent = `USD ${Number(el.value).toLocaleString('en-US')}`;
+    main.querySelector(`[name="${key}"]`).value = el.value;
+    save(); updateTripSheet(); return;
   }
   if (el.dataset.dateTime) {
     state.confirmedAt = '';
@@ -180,7 +222,7 @@ main.addEventListener('input', event => {
     state[el.dataset.dateTime] = `${date}${el.value ? `T${el.value}` : ''}`;
     save(); return;
   }
-  if (el.dataset.need) { state.confirmedAt = ''; state.needDetails[el.dataset.need][el.dataset.detail] = el.value; save(); return; }
+  if (el.dataset.need) { if (['radio','checkbox'].includes(el.type)) return; state.confirmedAt = ''; state.needDetails[el.dataset.need][el.dataset.detail] = el.value; save(); return; }
   if (el.name && !['radio', 'checkbox'].includes(el.type)) {
     state.confirmedAt = '';
     if (el.name === 'originSearch') {
@@ -201,12 +243,18 @@ main.addEventListener('input', event => {
       document.querySelectorAll('[name=interestStatus]').forEach(r => r.checked = r.value === state.interestStatus);
     }
     save();
-    if (el.name === 'budgetMin') {
-      document.querySelector('#budget-display').textContent = el.value ? `USD ${Number(el.value).toLocaleString('en-US')}` : 'Choose your amount';
-      document.querySelector('#budget-slider').value = el.value || 100;
-      main.querySelector('[name=budgetMode][value=amount]').checked = state.budgetMode === 'amount';
+    if (['budgetMin','budgetMax'].includes(el.name)) {
+      const band = main.querySelector(`[data-budget-band="${el.name}"]`);
+      band.querySelector('output').textContent = el.value ? `USD ${Number(el.value).toLocaleString('en-US')}` : 'Choose your amount';
+      band.querySelector('[type=range]').value = el.value || 100;
     }
-    document.querySelector('#trip-sheet').innerHTML = tripSheet();
+    if (['adults','children','durationMin','durationMax'].includes(el.name)) {
+      const group = main.querySelector(`[data-count-panel="${el.name}"]`);
+      group?.querySelectorAll('[data-count]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.count === el.value)));
+      if (el.name === 'children') normalise();
+      save();
+    }
+    updateTripSheet();
   }
 });
 main.addEventListener('change', event => {
@@ -258,15 +306,15 @@ main.addEventListener('change', event => {
     }
     // Explicitly keeping inspiration open removes practical conditions, never personal needs.
     const blank = fresh();
-    for (const field of ['originCity','originCountry','alternateOrigin','durationMode','durationMin','durationMax','periodMode','dateStart','dateEnd','monthStart','monthEnd','periodFlexibility','travelLimitMode','travelLimit','transport','transportNotes','groupKnown','adults','children','childAges','groupNotes','budgetMode','budgetMin','budgetMax','budgetIncludes','budgetFlexibility','documentationMode','passports','residence','permits','groupDocuments']) state[field] = blank[field];
+    for (const field of ['originCity','originCountry','alternateOrigin','durationMode','durationMin','durationMax','periodMode','dateStart','dateEnd','monthStart','monthEnd','periodFlexibility','travelLimitMode','travelLimit','transport','transportNotes','groupKnown','adults','children','childAges','groupNotes','budgetMode','budgetMin','budgetMax','budgetScope','budgetIncludes','budgetFlexibility','documentationMode','passports','residence','permits','groupDocuments']) state[field] = blank[field];
     save();
   }
   if (key === 'periodMode' && el.value === 'dates') { state.durationMode = 'unknown'; state.durationMin = ''; state.durationMax = ''; save(); }
-  if (['interests', 'interestStatus', 'needs', 'needsStatus', 'motivations', 'groupKnown', 'durationMode', 'periodMode', 'travelLimitMode', 'budgetMode', 'documentationMode', 'categoryChoice', 'contextChoice'].includes(key)) {
+  if (['interests', 'interestStatus', 'needs', 'needsStatus', 'motivations', 'groupKnown', 'durationMode', 'durationUnit', 'periodMode', 'travelLimitMode', 'budgetMode', 'documentationMode', 'categoryChoice', 'contextChoice'].includes(key)) {
     const scroll = window.scrollY; renderForm(false); window.scrollTo(0, scroll);
     const replacement = [...main.querySelectorAll('[name]')].find(item => item.name === key && item.value === el.value); replacement?.focus({ preventScroll: true });
   }
-  document.querySelector('#trip-sheet').innerHTML = tripSheet();
+  updateTripSheet();
 });
 main.addEventListener('submit', event => {
   event.preventDefault(); normalise();
@@ -282,12 +330,10 @@ main.addEventListener('submit', event => {
 function download(content, name, type) { const url = URL.createObjectURL(new Blob([content], { type })); const link = document.createElement('a'); link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 main.addEventListener('click', async event => {
   const el = event.target.closest('button'); if (!el) return;
-  if (el.dataset.counter) {
+  if (el.dataset.count !== undefined) {
     state.confirmedAt = '';
-    const key = el.dataset.counter;
-    state[key] = String(Math.max(0, Number(state[key] || 0) + Number(el.dataset.delta)));
-    save(); renderForm(false);
-    main.querySelector(`[data-counter="${key}"][data-delta="${el.dataset.delta}"]`)?.focus({ preventScroll: true });
+    state[el.dataset.countField] = el.dataset.count;
+    normalise(); save(); renderForm(false);
     return;
   }
   if (el.dataset.action === 'all-costs') { state.confirmedAt = ''; state.budgetIncludes = ['Main transport','Accommodation','Food','Local transport','Activities']; save(); renderForm(false); return; }

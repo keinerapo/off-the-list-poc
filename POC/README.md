@@ -24,7 +24,13 @@ No se ha publicado automaticamente en ningun proveedor. El atributo `noindex` so
 
 La captura usa un lienzo de decisiones: una pregunta principal por vista, sin dropdowns ni avance automatico. Las seis etapas se mantienen estables; las preguntas condicionales aparecen solo cuando aplican. La ficha "Your starting point" acumula respuestas editables y se contrae en movil. Las respuestas guardadas por la primera version siguen disponibles.
 
-El presupuesto se elige con una banda ajustable en USD, con entrada exacta opcional sin limite de USD 20.000 y rango opcional. La posicion inicial de la banda no constituye una respuesta. El alcance por persona/grupo se elige explicitamente y los conceptos incluidos se capturan en una decision posterior. Grupo y duracion utilizan contadores editables. Ritmo utiliza agendas ilustradas con texto accesible. Fechas concretas omiten la pregunta adicional de duracion; las horas son opcionales y nunca se supone medianoche. Inspiracion permite omitir el bloque practico completo sin eliminar necesidades personales.
+El presupuesto se elige con bandas ajustables en USD y entrada exacta opcional sin limite de USD 20.000. La posicion inicial de cada banda no constituye una respuesta. El alcance por persona/grupo se elige explicitamente y los conceptos incluidos se capturan en una decision posterior. Los participantes se eligen con badges circulares de 1 a 5, con cero adicional para menores y una entrada exacta para cualquier otra cantidad. Ritmo utiliza agendas ilustradas con texto accesible. Fechas concretas omiten la pregunta adicional de duracion; las horas son opcionales y nunca se supone medianoche. Inspiracion permite omitir el bloque practico completo sin eliminar necesidades personales.
+
+La duracion utiliza cantidades predefinidas segun horas, dias, semanas o meses, con entrada exacta opcional que admite fracciones y cantidades fuera de los botones. Un rango tiene selectores independientes para minimo y maximo. Ya no utiliza controles de incremento/decremento.
+
+En presupuesto, "Not decided yet" oculta bandas, entradas exactas, alcance y flexibilidad, y elimina esos valores anteriores. "An amount" muestra una banda; "A range" muestra dos bandas independientes para el minimo objetivo y el tope superior. Cada una permite entrada exacta fuera del rango visual. No se registran montos predeterminados ni se corrigen rangos invalidos silenciosamente.
+
+Los cambios de respuesta actualizan los elementos existentes sin reconstruir el formulario ni reiniciar su animacion. Se conservan foco, imagenes y detalles abiertos. La animacion de entrada solo se ejecuta al navegar a otra decision.
 
 - Landing inspirada en `assets/screen-example.png`, sin viajes misteriosos ni promesas de reservas o entregas ficticias.
 - Entradas de inspiracion y viaje concreto.

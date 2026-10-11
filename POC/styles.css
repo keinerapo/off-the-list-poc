@@ -109,3 +109,47 @@
 .budget-band{min-width:0}
 .duration-picker .subpanel{max-width:360px}
 @media(max-width:600px){.budget-bands.is-range{grid-template-columns:1fr;gap:4px}.duration-options{gap:8px}.duration-options button{min-width:64px;padding:12px}.budget-bands.is-range output{font-size:34px;margin-bottom:16px}}
+
+/* Practical records retain their own controls as conditional panels change. */
+.decision-canvas .record-panel{margin:24px 0;border-radius:18px;min-width:0}
+.decision-canvas .record-panel h3{font-size:21px;overflow-wrap:anywhere}
+.decision-canvas .record-panel fieldset{min-width:0}
+.decision-canvas .record-panel .choice{padding:15px;align-items:flex-start}
+.decision-canvas .record-panel .choice>span{font-size:16px;overflow-wrap:anywhere}
+.decision-canvas .record-panel .field{margin-bottom:20px}
+.decision-canvas input:not([type=radio]):not([type=checkbox]),.decision-canvas textarea{max-width:100%;min-width:0}
+.decision-canvas [data-add-record]{margin:8px 0 20px;white-space:normal;text-align:center}
+.decision-canvas [data-remove-record]{min-height:44px;text-align:left}
+@media(max-width:600px){.decision-canvas .record-panel{padding:17px;margin:20px 0}.decision-canvas [data-add-record]{width:100%}.decision-canvas .record-panel .choice{padding:14px}}
+
+.group-screening{max-width:680px;margin:0 auto}
+.decision-canvas .group-screening>.choices,.group-screening>fieldset{margin-bottom:20px}
+.decision-canvas .group-screening .choice{padding:16px;min-height:60px}
+.decision-canvas .group-screening .choice>span{font-size:16px}
+.essential-registry{border-top:1px solid var(--line);padding-top:20px;margin-top:24px}
+.essential-registry>.hint{font-size:13px;max-width:60ch}
+.decision-canvas .record-panel details .subpanel{background:transparent;border:0;padding:16px 0 0}
+.decision-canvas fieldset,.decision-canvas .choice>span{min-width:0}
+.decision-canvas .choice>span{overflow-wrap:anywhere}
+@media(max-width:600px){.decision-canvas .group-screening .choice{min-height:56px;padding:14px}.essential-registry{margin-top:20px;padding-top:16px}}
+
+/* Brief milestones return context without adding a navigation step. */
+.journey-pause{border:1px solid var(--line);border-radius:22px;background:linear-gradient(120deg,var(--blush),#f5f0e8);margin:0 0 34px;overflow:hidden}
+.journey-pause.has-image{display:grid;grid-template-columns:150px minmax(0,1fr)}
+.journey-pause>img{width:100%;height:100%;object-fit:cover;min-height:180px}
+.pause-copy{padding:24px;min-width:0}
+.pause-copy .eyebrow{color:var(--dark);margin-bottom:10px}
+.pause-copy h2{font-size:clamp(24px,3vw,32px);letter-spacing:-.6px;margin-bottom:12px}
+.pause-copy>p:not(.eyebrow){font-size:14px;line-height:1.55;margin-bottom:0}
+.pause-pieces{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.pause-pieces button{flex:1 1 160px;max-width:100%;min-width:0;text-align:left;padding:12px 14px;background:#fcfaf7b3;border:1px solid #d9b9b1;border-radius:12px;color:var(--ink);font-size:14px;overflow-wrap:anywhere}
+.pause-pieces button:hover{border-color:var(--dark);background:var(--paper)}
+.pause-pieces button>span{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.pause-pieces button>.pause-edit{color:var(--dark);margin:6px 0 0}
+.pause-copy>.pause-note{margin-top:16px;padding-top:14px;border-top:1px solid #d9b9b1;color:var(--muted);font-size:12px!important}
+.review-section{margin-top:32px}
+.review-section>h2{font-size:27px;letter-spacing:-.5px}
+.review-open{border-top:1px solid var(--line);padding-top:24px}
+.review-open>p{font-size:14px;color:var(--muted)}
+.review-open summary{padding:12px 0;min-height:44px;color:var(--dark)}
+@media(max-width:600px){.journey-pause{margin-bottom:28px;border-radius:18px}.journey-pause.has-image{grid-template-columns:1fr}.journey-pause>img{height:100px;min-height:0}.pause-copy{padding:18px}.pause-copy h2{font-size:25px}.pause-pieces button{flex-basis:140px}.review-section>h2{font-size:25px}}

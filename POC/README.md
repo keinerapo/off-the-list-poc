@@ -4,7 +4,7 @@ Prototipo estatico para validar las preguntas, la captura y las recomendaciones 
 
 ## Ejecutar localmente
 
-Desde la carpeta `POC`, ejecutar `npm start` y abrir `http://localhost:4173`.
+Desde la carpeta `POC`, ejecutar `npm start` y abrir `http://localhost:4173/#entry`. La raiz `/` y los hashes no reconocidos (incluidos los antiguos `#home` y `#how-it-works`) se normalizan a `#entry` sin mostrar una landing interna.
 
 Requiere Node.js 22 o posterior para el servidor local. No requiere instalar dependencias, configurar API keys ni crear cuentas. No abrir `index.html` como archivo: los modulos JavaScript requieren un servidor HTTP.
 
@@ -32,7 +32,7 @@ En presupuesto, "Not decided yet" oculta bandas, entradas exactas, alcance y fle
 
 Los cambios de respuesta actualizan los elementos existentes sin reconstruir el formulario ni reiniciar su animacion. Se conservan foco, imagenes y detalles abiertos. La animacion de entrada solo se ejecuta al navegar a otra decision.
 
-- Landing inspirada en `assets/screen-example.png`, sin viajes misteriosos ni promesas de reservas o entregas ficticias.
+- Acceso directo al cuestionario en `/#entry`, sin landing interna. Los enlaces de regreso a la landing externa quedan pendientes hasta disponer de su URL.
 - Entradas de inspiracion y viaje concreto.
 - Diez escenas, orden aleatorio conservado por sesion, hasta tres intereses contando el personalizado, prioridad opcional.
 - Autonomia, comodidad, un seguimiento gastronomico condicional y recuerdo opcional sin interpretacion automatica.

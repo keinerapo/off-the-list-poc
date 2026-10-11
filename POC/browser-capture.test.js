@@ -615,6 +615,36 @@ async function journeyPauses(page, width) {
   assert.equal(await page.locator('.journey-pause').count(), 0, 'Review edits do not repeat milestones.');
 }
 
+async function entryNavigation(page) {
+  for (const hash of ['', '#home', '#how-it-works', '#not-a-route', '#entry']) {
+    await page.goto(`${base}/${hash}`);
+    await page.getByRole('heading', { name: 'What brings you here?', exact: true }).waitFor();
+    assert.equal(new URL(page.url()).hash, '#entry');
+    assert.equal(await page.locator('.hero, .how, a[href="#home"], a[href="#how-it-works"]').count(), 0);
+    await layout(page);
+  }
+  await page.locator('[data-mode="trip"]').click();
+  await at(page, 'presentation');
+  const before = await saved(page);
+  await page.locator('.skip-link').evaluate(link => link.click());
+  assert.equal(new URL(page.url()).hash, '#decision/presentation');
+  assert.equal(await page.locator('#main').evaluate(node => node === document.activeElement), true);
+  assert.deepEqual(await saved(page), before);
+  await page.locator('.site-header > a').click();
+  await page.getByRole('heading', { name: 'What brings you here?', exact: true }).waitFor();
+  assert.equal(new URL(page.url()).hash, '#entry');
+  assert.deepEqual(await saved(page), before);
+  await page.locator('#delete-session').click();
+  assert.equal(new URL(page.url()).hash, '#entry');
+  assert.equal(await saved(page), null);
+  await inject(page, readyState());
+  await confirm(page);
+  await page.getByRole('link', { name: 'Back to starting point', exact: true }).click();
+  await page.getByRole('heading', { name: 'What brings you here?', exact: true }).waitFor();
+  assert.equal(new URL(page.url()).hash, '#entry');
+  assert.ok((await saved(page)).state.confirmedAt);
+}
+
 try {
   for (let attempt = 0; attempt < 100; attempt++) {
     if (server.exitCode !== null) throw new Error(`Server failed: ${serverLog}`);
@@ -636,6 +666,7 @@ try {
   await Promise.all([false, true].map(async mobile => {
     const width = mobile ? 390 : 1440;
     for (const [name, flow] of [
+      ['entry navigation without internal home', entryNavigation],
       ['fresh unknown trip UI', (page, width) => freshUI(page, width, 'trip')],
       ['fresh unknown inspiration UI', (page, width) => freshUI(page, width, 'inspiration')],
       ['mandatory review and result redirects', mandatoryRedirects],

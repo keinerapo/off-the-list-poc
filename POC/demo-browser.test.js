@@ -40,6 +40,9 @@ try {
     async function layout() {
       await page.locator('#demo-form').waitFor();
       assert.equal(await page.locator('fieldset').count(), 2);
+      assert.equal(await page.locator('#sections button > svg.lucide').count(), 5);
+      assert.equal(await page.locator('legend > svg.lucide').count(), 2);
+      assert.equal(await page.locator('svg.lucide:not([aria-hidden="true"]), svg.lucide:not([focusable="false"])').count(), 0);
       assert.equal(await page.locator('details').count(), 0);
       assert.doesNotMatch(await page.locator('main').innerText(), /not known|don't know|not sure/i);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No page overflow');
@@ -50,6 +53,7 @@ try {
     async function next() { await page.getByRole('button', { name: 'Continue', exact: true }).click(); await layout(); }
     await layout();
     assert.equal(await page.locator('.scene').count(), scenes.length);
+    assert.equal(await page.locator('.scene svg').count(), 0, 'Original interest cards remain unchanged');
     for (const scene of scenes) {
       const card = page.locator('.scene').filter({ has: page.locator(`input[value="${scene.id}"]`) });
       assert.equal(await card.locator('img').getAttribute('src'), scene.image);

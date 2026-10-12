@@ -1,5 +1,6 @@
 import { demoSections, demoPrompts, validateDemoAnswers, completeDemoPrompt } from './demo-prompts.js';
 import { scenes } from './model.js';
+import { icon } from './demo-icons.js';
 
 const main = document.querySelector('#demo');
 const nav = document.querySelector('#sections');
@@ -7,12 +8,21 @@ const answers = {};
 let active = 0;
 let result = null;
 const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+const sectionIcons = ['sparkles', 'compass', 'plane', 'wallet', 'heart'];
+const questionIcons = { presentationName: 'user-round', interests: 'sparkles', autonomy: 'route', offPathComfort: 'compass', motivations: 'heart', pace: 'sun', durationMin: 'calendar-days', budgetMin: 'wallet', needsText: 'heart', physicalIntensity: 'footprints' };
+const choiceIcons = {
+  autonomy: ['list-checks', 'route', 'compass'],
+  offPathComfort: ['map', 'users-round', 'compass', 'route', 'mountain'],
+  motivations: ['coffee', 'users-round', 'compass', 'book-open', 'sun', 'mountain', 'user-round', 'flag'],
+  pace: ['coffee', 'sun', 'compass', 'shuffle'],
+  physicalIntensity: ['coffee', 'footprints', 'mountain', 'shuffle'],
+};
 
 function render(focus = false) {
   main.classList.toggle('with-scenes', !result && active === 0);
-  nav.innerHTML = demoSections.map((section, index) => `<button type="button" data-section="${index}" ${!result && active === index ? 'aria-current="step"' : ''} class="${validateDemoAnswers(answers, section) ? '' : 'complete'}">${section.label}</button>`).join('');
+  nav.innerHTML = demoSections.map((section, index) => `<button type="button" data-section="${index}" ${!result && active === index ? 'aria-current="step"' : ''} class="${validateDemoAnswers(answers, section) ? '' : 'complete'}">${icon(validateDemoAnswers(answers, section) ? sectionIcons[index] : 'check')}<span>${section.label}</span></button>`).join('');
   if (result) {
-    main.innerHTML = `<h1>Your travel prompt</h1><p class="result-note">Your answers, completed with fictional scenario ${result.index + 1} of ${demoPrompts.length}. Unasked details are demo data, not facts about you.</p><textarea class="prompt" aria-label="Generated travel prompt" readonly spellcheck="false"></textarea><div class="result-actions"><button class="button" type="button" data-action="copy">Copy prompt</button><button class="button secondary" type="button" data-action="download">Download</button><button class="back" type="button" data-action="edit">Edit answers</button><span class="status" role="status"></span></div>`;
+    main.innerHTML = `<h1>${icon('file-text')}Your travel prompt</h1><p class="result-note">Your answers, completed with fictional scenario ${result.index + 1} of ${demoPrompts.length}. Unasked details are demo data, not facts about you.</p><textarea class="prompt" aria-label="Generated travel prompt" readonly spellcheck="false"></textarea><div class="result-actions"><button class="button" type="button" data-action="copy">${icon('copy')}Copy prompt</button><button class="button secondary" type="button" data-action="download">${icon('download')}Download</button><button class="back" type="button" data-action="edit">${icon('pencil')}Edit answers</button><span class="status" role="status"></span></div>`;
     main.querySelector('.prompt').value = result.prompt;
   } else {
     const section = demoSections[active];
@@ -22,7 +32,7 @@ function render(focus = false) {
       if (question.key === 'interests') {
         control = `<p class="selection-count" role="status">${value?.length ?? 0} of 3 interests selected</p><div class="scene-grid">${scenes.map(scene => `<label class="scene"><img src="${escape(scene.image)}" alt="" loading="lazy"><div class="scene-body"><span class="scene-title">${escape(scene.title)}<input type="checkbox" name="interests" value="${escape(scene.id)}"${value?.includes(scene.id) ? ' checked' : ''} aria-label="${escape(`${scene.title}. ${scene.description}`)}"></span><p>${escape(scene.description)}</p></div></label>`).join('')}</div>`;
       } else if (question.options) {
-        control = `<div class="choices">${question.options.map(([option, label]) => `<label class="choice"><input type="${question.type === 'multiple' ? 'checkbox' : 'radio'}" name="${question.key}" value="${escape(option)}" ${Array.isArray(value) ? value.includes(option) ? 'checked' : '' : value === option ? 'checked' : ''}><span>${escape(label)}</span></label>`).join('')}</div>`;
+        control = `<div class="choices">${question.options.map(([option, label], optionIndex) => `<label class="choice"><input type="${question.type === 'multiple' ? 'checkbox' : 'radio'}" name="${question.key}" value="${escape(option)}" ${Array.isArray(value) ? value.includes(option) ? 'checked' : '' : value === option ? 'checked' : ''}>${choiceIcons[question.key] ? icon(choiceIcons[question.key][optionIndex]) : ''}<span>${escape(label)}</span></label>`).join('')}</div>`;
       } else if (question.type === 'textarea') {
         control = `<textarea class="answer" name="${question.key}" aria-label="${escape(question.title)}" placeholder="${escape(question.placeholder)}" maxlength="2000" rows="3">${escape(value ?? '')}</textarea>`;
       } else if (question.type === 'budget') {
@@ -30,8 +40,8 @@ function render(focus = false) {
       } else {
         control = `<input class="answer" type="text" name="${question.key}" aria-label="${escape(question.title)}" value="${escape(value ?? '')}" maxlength="100" autocomplete="nickname">`;
       }
-      return `<fieldset data-question="${question.key}"><legend><span class="question-number">${String(active * 2 + index + 1).padStart(2, '0')}${question.max ? ` / SELECT UP TO ${question.max}` : ''}</span>${question.title}</legend>${control}</fieldset>`;
-    }).join('')}<p class="error" role="alert" hidden></p><div class="navigation">${active > 0 ? '<button class="back" type="button" data-action="back">Back</button>' : ''}<span class="counter">${active + 1} / ${demoSections.length}</span><button class="button" type="submit">${active === demoSections.length - 1 ? 'Generate prompt' : 'Continue'}</button></div></form>`;
+      return `<fieldset data-question="${question.key}"><legend><span class="question-number">${String(active * 2 + index + 1).padStart(2, '0')}${question.max ? ` / SELECT UP TO ${question.max}` : ''}</span>${icon(questionIcons[question.key])}${question.title}</legend>${control}</fieldset>`;
+    }).join('')}<p class="error" role="alert" hidden></p><div class="navigation">${active > 0 ? `<button class="back" type="button" data-action="back">${icon('arrow-left')}Back</button>` : ''}<span class="counter">${active + 1} / ${demoSections.length}</span><button class="button" type="submit">${active === demoSections.length - 1 ? `${icon('sparkles')}Generate prompt` : `Continue${icon('arrow-right')}`}</button></div></form>`;
   }
   if (focus) main.focus();
   nav.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });

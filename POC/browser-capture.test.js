@@ -247,7 +247,7 @@ async function shot(page, name) {
 }
 
 async function freshUI(page, width, mode) {
-  await page.goto(`${base}/#entry`);
+  await page.goto(`${base}/#quiz`);
   await page.locator(`[data-mode="${mode}"]`).click();
   await at(page, 'presentation');
   const fresh = (await saved(page)).state;
@@ -616,10 +616,10 @@ async function journeyPauses(page, width) {
 }
 
 async function entryNavigation(page) {
-  for (const hash of ['', '#home', '#how-it-works', '#not-a-route', '#entry']) {
+  for (const hash of ['#home', '#how-it-works', '#not-a-route', '#quiz']) {
     await page.goto(`${base}/${hash}`);
     await page.getByRole('heading', { name: 'What brings you here?', exact: true }).waitFor();
-    assert.equal(new URL(page.url()).hash, '#entry');
+    assert.equal(new URL(page.url()).hash, '#quiz');
     assert.equal(await page.locator('.hero, .how, a[href="#home"], a[href="#how-it-works"]').count(), 0);
     await layout(page);
   }
@@ -632,16 +632,16 @@ async function entryNavigation(page) {
   assert.deepEqual(await saved(page), before);
   await page.locator('.site-header > a').click();
   await page.getByRole('heading', { name: 'What brings you here?', exact: true }).waitFor();
-  assert.equal(new URL(page.url()).hash, '#entry');
+  assert.equal(new URL(page.url()).hash, '#quiz');
   assert.deepEqual(await saved(page), before);
   await page.locator('#delete-session').click();
-  assert.equal(new URL(page.url()).hash, '#entry');
+  assert.equal(new URL(page.url()).hash, '#quiz');
   assert.equal(await saved(page), null);
   await inject(page, readyState());
   await confirm(page);
   await page.getByRole('link', { name: 'Back to starting point', exact: true }).click();
   await page.getByRole('heading', { name: 'What brings you here?', exact: true }).waitFor();
-  assert.equal(new URL(page.url()).hash, '#entry');
+  assert.equal(new URL(page.url()).hash, '#quiz');
   assert.ok((await saved(page)).state.confirmedAt);
 }
 

@@ -154,6 +154,7 @@ function result(preliminary = false) {
   if (!preliminary && (!state.confirmedAt || !state.confirmedSnapshot || !validateCapture(state).ready)) { step = 5; location.hash = 'form/5'; return; }
   const category = state.categoryChoice === 'none' ? null : categories.find(c => c.name === (state.categoryChoice || categoryCandidates(state).automatic));
   main.innerHTML = `<section class="shell narrow" data-output="${preliminary ? 'preliminary' : 'final'}">${intro('YOUR TRAVEL PROPOSAL REQUEST', 'A trip shaped around what you know.', 'Copy this request into your chosen AI service to explore a proposal. Your preferences, important needs and open points go with it.')}<p class="notice">You can receive a useful proposal with conditional ideas even when some answers are unknown. Uncertainty is not a guarantee of compatibility: essential safety, provider, entry and cost checks remain explicit. This prototype does not research or book travel.</p><div class="actions export-actions"><button class="button" data-action="copy">Copy prompt</button><button class="button secondary" data-action="download">Download prompt .txt</button><button class="text-button" data-edit="5">Review / edit answers</button></div><label class="field" for="prompt">Your complete travel proposal request</label><textarea class="prompt" id="prompt" readonly spellcheck="false">${esc(outputPrompt(preliminary))}</textarea><p class="hint">${category ? esc(category.name) + ' is an optional description, not a destination filter. ' : ''}Adventure, Explore, Transform and Culture remain part of the proposal. Open points are disclosed, not silently resolved.</p><button class="button secondary" data-action="export">Download session .json</button><div class="actions"><button class="button secondary" data-action="make-trip">Adjust this trip</button><a class="text-button" href="#entry">Back to starting point</a></div></section>`;
+  main.querySelector('a[href="#entry"]').href = '#quiz';
 }
 function outputPrompt(preliminary = false) {
   const snapshot = preliminary ? captureSnapshot(state) : state.confirmedSnapshot;
@@ -187,16 +188,16 @@ function route() {
     return;
   }
   if (hash.startsWith('form/') || hash.startsWith('decision/')) {
-    if (!state.mode) { location.hash = 'entry'; return; }
+    if (!state.mode) { location.hash = 'quiz'; return; }
     const value = hash.split('/')[1];
     if (hash.startsWith('form/')) { const stage = Math.min(5, Math.max(0, Number(value) || 0)); currentDecision = stage === 5 ? 'review' : decisions.find(d => d.stage === stage && d.visible(state))?.id || 'needs'; }
     else currentDecision = decisionIds(state).includes(value) ? value : 'interests';
     renderForm(); savedStep = step; save();
   }
-  else if (hash === 'entry') entry();
+  else if (hash === 'quiz') entry();
   else if (hash === 'result') result();
   else if (hash === 'preliminary') result(true);
-  else { history.replaceState(null, '', '#entry'); entry(); }
+  else { history.replaceState(null, '', '#quiz'); entry(); }
   window.scrollTo(0, 0); main.focus({ preventScroll: true });
 }
 main.addEventListener('input', event => {
@@ -372,7 +373,7 @@ main.addEventListener('click', async event => {
   if (el.dataset.decision) { editingReview = currentDecision === 'review'; if (state.mode === 'inspiration' && ['origin','timing','duration','travel','group','budget','includes','documentation'].includes(el.dataset.decision)) state.contextChoice = 'add'; goDecision(el.dataset.decision); return; }
   if (el.dataset.mode) { invalidate(); state.mode = el.dataset.mode; editingReview = false; step = 0; save(); goDecision('presentation'); }
   if (el.dataset.edit !== undefined) { editingReview = el.dataset.edit !== '5'; location.hash = `form/${el.dataset.edit}`; }
-  if (el.dataset.action === 'back') { editingReview = false; const ids = [...decisionIds(state),'review']; const index = ids.indexOf(currentDecision); if (index <= 0) location.hash = 'entry'; else goDecision(ids[index - 1]); }
+  if (el.dataset.action === 'back') { editingReview = false; const ids = [...decisionIds(state),'review']; const index = ids.indexOf(currentDecision); if (index <= 0) location.hash = 'quiz'; else goDecision(ids[index - 1]); }
   if (el.dataset.action === 'preliminary') { location.hash = 'preliminary'; return; }
   let prompt;
   if (['copy','download'].includes(el.dataset.action)) {
@@ -395,7 +396,7 @@ document.querySelector('#delete-session').addEventListener('click', () => {
   if (!window.confirm('Delete all answers saved by this prototype in this browser? Downloaded files and data you shared elsewhere will not be deleted.')) return;
   try { localStorage.removeItem(KEY); } catch { /* In-memory reset still works without storage. */ }
   state = { ...fresh(), ...captureDefaults() }; savedStep = 0; step = 0; editingReview = false; pauseReturn = '';
-  if (location.hash === '#entry') route(); else location.hash = 'entry';
+  if (location.hash === '#quiz') route(); else location.hash = 'quiz';
   notify('Your answers have been deleted from this prototype.');
 });
 document.querySelector('.skip-link').addEventListener('click', event => {

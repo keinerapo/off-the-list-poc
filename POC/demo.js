@@ -1,4 +1,6 @@
-import { demoSections, demoPrompts, validateDemoAnswers, completeDemoPrompt } from './demo-prompts.js';
+import { demoSections, validateDemoAnswers } from './demo-prompts.js';
+import { selectSampleJourney } from './demo-journeys.js';
+import { renderJourney } from './demo-journey-view.js';
 import { scenes } from './model.js';
 import { icon } from './demo-icons.js';
 
@@ -7,6 +9,7 @@ const nav = document.querySelector('#sections');
 const answers = {};
 let active = 0;
 let result = null;
+let preparationTimer = null;
 const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const sectionIcons = ['sparkles', 'compass', 'plane', 'wallet', 'heart'];
 const questionIcons = { presentationName: 'user-round', interests: 'sparkles', autonomy: 'route', offPathComfort: 'compass', motivations: 'heart', pace: 'sun', durationMin: 'calendar-days', budgetMin: 'wallet', needsText: 'heart', physicalIntensity: 'footprints' };
@@ -20,10 +23,10 @@ const choiceIcons = {
 
 function render(focus = false) {
   main.classList.toggle('with-scenes', !result && active === 0);
+  main.classList.toggle('with-journey', Boolean(result));
   nav.innerHTML = demoSections.map((section, index) => `<button type="button" data-section="${index}" ${!result && active === index ? 'aria-current="step"' : ''} class="${validateDemoAnswers(answers, section) ? '' : 'complete'}">${icon(validateDemoAnswers(answers, section) ? sectionIcons[index] : 'check')}<span>${section.label}</span></button>`).join('');
   if (result) {
-    main.innerHTML = `<h1>${icon('file-text')}Your travel prompt</h1><p class="result-note">Your answers, completed with fictional scenario ${result.index + 1} of ${demoPrompts.length}. Unasked details are demo data, not facts about you.</p><textarea class="prompt" aria-label="Generated travel prompt" readonly spellcheck="false"></textarea><div class="result-actions"><button class="button" type="button" data-action="copy">${icon('copy')}Copy prompt</button><button class="button secondary" type="button" data-action="download">${icon('download')}Download</button><button class="back" type="button" data-action="edit">${icon('pencil')}Edit answers</button><span class="status" role="status"></span></div>`;
-    main.querySelector('.prompt').value = result.prompt;
+    main.innerHTML = renderJourney(result);
   } else {
     const section = demoSections[active];
     main.innerHTML = `<form id="demo-form" novalidate>${section.questions.map((question, index) => {
@@ -41,10 +44,69 @@ function render(focus = false) {
         control = `<input class="answer" type="text" name="${question.key}" aria-label="${escape(question.title)}" value="${escape(value ?? '')}" maxlength="100" autocomplete="nickname">`;
       }
       return `<fieldset data-question="${question.key}"><legend><span class="question-number">${String(active * 2 + index + 1).padStart(2, '0')}${question.max ? ` / SELECT UP TO ${question.max}` : ''}</span>${icon(questionIcons[question.key])}${question.title}</legend>${control}</fieldset>`;
-    }).join('')}<p class="error" role="alert" hidden></p><div class="navigation">${active > 0 ? `<button class="back" type="button" data-action="back">${icon('arrow-left')}Back</button>` : ''}<span class="counter">${active + 1} / ${demoSections.length}</span><button class="button" type="submit">${active === demoSections.length - 1 ? `${icon('sparkles')}Generate prompt` : `Continue${icon('arrow-right')}`}</button></div></form>`;
+    }).join('')}<p class="error" role="alert" hidden></p><div class="navigation">${active > 0 ? `<button class="back" type="button" data-action="back">${icon('arrow-left')}Back</button>` : ''}<span class="counter">${active + 1} / ${demoSections.length}</span><button class="button" type="submit">${active === demoSections.length - 1 ? `${icon('sparkles')}Discover my journey` : `Continue${icon('arrow-right')}`}</button></div></form>`;
   }
   if (focus) main.focus();
   nav.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function stopPreparation() {
+  clearInterval(preparationTimer);
+  preparationTimer = null;
+  main.classList.remove('preparing');
+  main.removeAttribute('aria-busy');
+  nav.querySelectorAll('button').forEach(button => { button.disabled = false; });
+}
+
+function prepareTrip(pendingResult) {
+  const stages = [
+    { title: 'It starts with you.', message: 'Gathering the interests and little details that make this trip yours.', pillar: 'Culture', symbol: 'book-open', scene: 'stories', label: 'Your preferences' },
+    { title: 'Room for discovery.', message: 'Bringing your curiosity and your way of exploring into the picture.', pillar: 'Explore', symbol: 'compass', scene: 'nature', label: 'Your travel style' },
+    { title: 'At your own rhythm.', message: 'Weaving together your time, budget and the things that matter to you.', pillar: 'Adventure', symbol: 'mountain', scene: 'water', label: 'Your trip essentials' },
+    { title: 'A new chapter awaits.', message: 'Putting the finishing touches on a journey worth imagining.', pillar: 'Transform', symbol: 'sparkles', scene: 'creative', label: 'Your journey preview' },
+  ];
+  const started = performance.now();
+  let currentStage = -1;
+  main.classList.remove('with-scenes', 'with-journey');
+  main.classList.add('preparing');
+  main.setAttribute('aria-busy', 'true');
+  nav.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  main.innerHTML = `<section class="preparation" aria-labelledby="preparation-title"><div class="preparation-art" aria-hidden="true"><div class="preparation-orbit"></div><div class="preparation-postcard">${stages.map((stage, index) => `<img class="preparation-photo" data-photo="${index}" src="${escape(scenes.find(scene => scene.id === stage.scene).image)}" alt="">`).join('')}<span class="postcard-caption">A different way to go.</span></div><div class="preparation-shape"><span class="shape-symbol"></span></div><span class="art-coordinate">OFF THE LIST / MADE AROUND YOU</span><span class="art-stamp">${icon('plane')}The next chapter</span></div><div class="preparation-copy"><p class="preparation-eyebrow">A LITTLE CURIOSITY. A NEW PERSPECTIVE.</p><div class="preparation-message" role="status" aria-live="polite" aria-atomic="true"><p class="preparation-pillar"></p><h1 id="preparation-title"></h1><p class="preparation-description"></p></div><div class="preparation-tags"><span>${icon('calendar-days')}${escape(answers.durationMin)} days</span><span>${icon('wallet')}EUR ${Number(answers.budgetMin).toLocaleString('en-US')} / person</span></div><ol class="preparation-steps" aria-label="Travel request preparation">${stages.map((stage, index) => `<li data-step="${index}"><span class="step-dot">${icon('check')}</span><span>${stage.label}</span></li>`).join('')}</ol><div class="preparation-track" aria-hidden="true"><span></span></div><div class="preparation-bottom"><span class="preparation-count" aria-hidden="true"></span><span>Thoughtfully put together.</span></div><p class="preparation-note">Preparing a sample journey presentation. This preview is not live research or a booking.</p><button class="back" type="button" data-action="cancel-preparation">${icon('arrow-left')}Back to answers</button></div></section>`;
+  const update = () => {
+    const elapsed = performance.now() - started;
+    if (elapsed >= 10000) {
+      stopPreparation();
+      result = pendingResult;
+      render(true);
+      return;
+    }
+    const index = Math.min(3, Math.floor(elapsed / 2500));
+    main.querySelector('.preparation-track span').style.width = `${Math.min(100, elapsed / 100)}%`;
+    if (index === currentStage) return;
+    currentStage = index;
+    const stage = stages[index];
+    const screen = main.querySelector('.preparation');
+    screen.dataset.stage = String(index);
+    main.querySelector('#preparation-title').textContent = stage.title;
+    main.querySelector('.preparation-description').textContent = stage.message;
+    main.querySelector('.preparation-pillar').textContent = stage.pillar;
+    main.querySelector('.shape-symbol').innerHTML = icon(stage.symbol);
+    main.querySelector('.preparation-count').textContent = `0${index + 1} / 04`;
+    main.querySelectorAll('[data-photo]').forEach(photo => photo.classList.toggle('is-active', Number(photo.dataset.photo) === index));
+    main.querySelectorAll('[data-step]').forEach(step => {
+      const position = Number(step.dataset.step);
+      step.classList.toggle('is-complete', position < index);
+      if (position === index) step.setAttribute('aria-current', 'step');
+      else step.removeAttribute('aria-current');
+    });
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      main.querySelector('.preparation-message').animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 500, easing: 'ease-out' });
+    }
+  };
+  update();
+  preparationTimer = setInterval(update, 100);
+  main.focus({ preventScroll: true });
+  window.scrollTo(0, 0);
 }
 
 function showError(key, message) {
@@ -57,6 +119,7 @@ function showError(key, message) {
 }
 
 nav.addEventListener('click', event => {
+  if (preparationTimer !== null) return;
   const button = event.target.closest('[data-section]');
   if (!button) return;
   active = Number(button.dataset.section);
@@ -87,6 +150,7 @@ main.addEventListener('input', event => {
 
 main.addEventListener('submit', event => {
   event.preventDefault();
+  if (preparationTimer !== null) return;
   const invalid = validateDemoAnswers(answers, demoSections[active]);
   if (invalid) {
     showError(invalid, invalid === 'budgetMin' ? 'Adjust the slider to choose your budget in EUR.' : 'Please answer this question to continue.');
@@ -101,42 +165,36 @@ main.addEventListener('submit', event => {
   if (missing) {
     active = demoSections.findIndex(section => section.questions.some(question => question.key === missing));
     render(true);
-    showError(missing, 'Please answer this question before generating the prompt.');
+    showError(missing, 'Please answer this question before discovering your journey.');
     return;
   }
-  const index = Math.floor(Math.random() * demoPrompts.length);
   try {
-    result = { index, prompt: completeDemoPrompt(answers, index) };
-    render(true);
+    prepareTrip(selectSampleJourney());
   } catch {
-    showError('needsText', 'The prompt could not be generated. Please review your answers and try again.');
+    showError('needsText', 'The journey could not be prepared. Please try again.');
   }
 });
 
 main.addEventListener('click', async event => {
   const action = event.target.closest('[data-action]')?.dataset.action;
+  if (action === 'cancel-preparation') { stopPreparation(); render(true); }
   if (action === 'back') { active--; render(true); }
   if (action === 'edit') { result = null; active = 0; render(true); }
-  if (action === 'copy') {
-    const prompt = main.querySelector('.prompt');
-    const status = main.querySelector('.status');
-    try {
-      await navigator.clipboard.writeText(prompt.value);
-      status.textContent = 'Prompt copied.';
-    } catch {
-      prompt.focus();
-      prompt.select();
-      status.textContent = 'Prompt selected. Use your keyboard to copy it.';
-    }
-  }
-  if (action === 'download') {
-    const url = URL.createObjectURL(new Blob([result.prompt], { type: 'text/plain;charset=utf-8' }));
+  if (action === 'another-journey') { result = null; prepareTrip(selectSampleJourney()); }
+  if (action === 'download-journey') {
+    const text = main.querySelector('.journey-result').innerText;
+    const sources = result.sources.map(source => `${source.title}: ${source.url}`).join('\n');
+    const url = URL.createObjectURL(new Blob([`${text}\n\nSOURCE LINKS\n${sources}`], { type: 'text/plain;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'off-the-list-demo-prompt.txt';
+    link.download = `off-the-list-${result.id}-journey.txt`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 });
 
+window.addEventListener('pagehide', stopPreparation);
+window.addEventListener('pageshow', event => {
+  if (event.persisted) render();
+});
 render();

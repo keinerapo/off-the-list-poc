@@ -1,0 +1,54 @@
+All six JPEG photographs in this directory are licensed CC BY-SA 4.0
+(Creative Commons Attribution-ShareAlike 4.0 International).
+
+License: https://creativecommons.org/licenses/by-sa/4.0/
+Legal code: https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+Authors, exact titles, source pages, download URLs and ready-to-render
+credit strings are recorded in attribution.json. Paths there are relative
+to POC/. No authorship is claimed by this demo.
+
+Reuse, including commercial use, and adaptation are permitted. Give
+appropriate credit, link to the source and license, and indicate changes.
+If you distribute an adaptation, license that adaptation under CC BY-SA
+4.0 or a compatible license. Do not impose additional legal or technical
+restrictions. ShareAlike applies to adaptations of the photographs, not
+automatically to unrelated application code or the whole collection.
+The linked legal code is authoritative; this file is a summary.
+
+Local processing: downloaded official Commons 1280px thumbnails with curl,
+then resized to 1000px width with macOS sips. No crop or color edits.
+For the original three photographs, direct 1000px thumbnail URLs returned
+HTTP 400. For the new three, the Commons imageinfo API requested at 1000px
+returned official 1280px thumbnail URLs. attribution.json records the actual
+successful download URLs. New files were resized with sips -Z 1000 to a
+maximum dimension of 1000px; no crop or color edits.
+
+New photographs, verified through Commons imageinfo/extmetadata on 2026-10-15:
+
+slovenia-mine.jpeg: "Podzemlje Pece (36)" by Ljuba brank, CC BY-SA 4.0.
+Source: https://commons.wikimedia.org/wiki/File:Podzemlje_Pece_(36).jpg
+Shows the actual mine interior in Mezica, Slovenia, not kayaking. This is
+a location-specific fallback; do not describe it as a kayaking photograph.
+
+azores-whales.jpeg: "Sperm whale (Physeter macrocephalus) diving, Sao Miguel
+Island, Azores, Portugal (PPL1-Corrected)" by Jules Verne Times Two,
+CC BY-SA 4.0. The exact title with diacritics is in attribution.json.
+Source: https://commons.wikimedia.org/w/index.php?curid=118482669
+Requested credit: Photo: Jules Verne Times Two / julesvernex2.com / CC-BY-SA-4.0
+Display this visibly, linked to the license, not only in a hover tooltip.
+Also link https://julesvernex2.com when possible. Include title and changes
+from attribution.json. Shows a sperm whale diving near Sao Miguel.
+
+lapland-huskies.jpeg: "Husky sled at dusk" by MPotter-Adams, CC BY-SA 4.0.
+Source: https://commons.wikimedia.org/wiki/File:Husky_sled_at_dusk.jpg
+Shows a husky sled ride in Abisko National Park, Sweden; the Commons source
+identifies Abisko and provides coordinates, so this is not a generic image
+relabeled as Swedish Lapland.
+
+The original Porto, Bologna and Sete files and their attribution.json
+entries are retained unchanged. Each image's license applies separately.
+
+For the renderer: display each credit and provide links to pageUrl and
+licenseUrl. If subsequently cropped or otherwise adapted, update the
+change notice and comply with the adaptation license requirements.

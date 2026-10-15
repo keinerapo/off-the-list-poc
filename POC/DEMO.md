@@ -6,7 +6,7 @@ The full form starts at `/#quiz` and retains its internal decision, review and r
 
 ## Questions
 
-There are five sections with two questions each. Review is replaced by immediate prompt output, not an additional question section.
+There are five sections with two questions each. Review is replaced by a ten-second animated preparation screen and then a single editorial journey presentation, not an additional question section.
 
 | Section | Questions |
 | --- | --- |
@@ -18,20 +18,22 @@ There are five sections with two questions each. Review is replaced by immediate
 
 There are no unknown options, optional follow-ups, supporting questions, entry-mode screen or separate review step. Budget scope, currency and coverage are stated alongside the amount rather than asked separately. Answers remain in memory for the current page session only.
 
-## Prompt Data
+The preparation screen uses the cream/coral editorial styling, asymmetric shapes and gentle motion of the `offthelist` brand site. Four stages change the message, pillar, photograph and timeline every 2.5 seconds, then reveal a journey at approximately ten seconds. This is a local presentation sequence, not remote destination research or a booking. Back to answers cancels the sequence without losing inputs. Reduced-motion settings remove animation while retaining changing messages and the same duration.
 
-`demo-prompts.js` exports `demoPrompts`, an array of five prompt templates using the current complete prompt instructions. Fictional scenarios cover a solo traveller, a family with a young child, an anniversary couple with an essential dietary requirement, a group of friends, and a couple requiring accessible travel.
+## Journey Data
 
-Every unasked active full-form decision is answered in those scenarios. Only fields covered by the ten demo questions are placeholders. Single motivations need no separate priority; interests are explicitly given equal importance. Dates use month windows so any offered demo duration fits without stale fixed dates. Each scenario uses the demo's explicit EUR per-person all-costs budget contract.
+`demo-journeys.js` exports exactly three prepared journeys, matching the updated Markdown documents in `../sample-journeys/`: underground kayaking in Mežica, Slovenia; whale watching and geothermal cooking in São Miguel, Azores; and overnight self-drive husky sledding in Swedish Lapland. Every attempt independently selects one with equal probability; repetition is possible. The ten demo answers do not filter, rewrite or verify the selected example. The result explicitly separates the sample context from visitor answers, including duration, group size, needs and budget scope.
 
-On generation, the controller randomly selects one template, parses its structured data, inserts the visitor's answers and uses the existing pure prompt builder and validation without changing either. User text is assigned as data, never interpolated into a template string. The result contains a complete validated snapshot, not stale summaries or unresolved template markers.
+`demo-journey-view.js` renders one experience-led hero, four pillar experiences, traveller portrait, practical travel shape, full budget coverage, trade-offs, verification tasks, change conditions and official source links. Costs remain declared caps, not invented quoted prices. The three Markdown documents use a consistent English structure and include researched activities and source consultation dates.
 
-Fictional essential restrictions are never erased by `None` in the additional-needs question. Free-text demo needs remain requirements to verify; the demo does not infer diagnoses or claim that the six full-form safety screens were answered by the visitor. The result screen identifies unasked data as fictional, but the exported prompt contains no demonstration disclaimer or scenario-selection header. It does not fabricate full-profile confirmation, medical clearance or booking consent. External verification points from the original instructions remain intact.
+The presentation follows the sibling site's `sample-journeys.html`: Lora editorial headings, a large rounded photograph, cream background, coral accents and a compact experience summary. Destination names remain secondary to the activity-led headline. Local photographs and Lora fonts have attribution and license files under `assets/journeys/` and `assets/font/`; no image or font CDN is needed.
+
+The final screen no longer shows, copies or downloads the technical prompt. Visitors can download the displayed journey as text, edit their answers, or start another random journey through the same transition. The earlier five prompt templates and builder remain available as pure utilities in `demo-prompts.js`, but are not used to select or generate the visible destination. The complete form and its prompt output are unchanged.
 
 ## Verification
 
 ```sh
-node --test demo.test.js model.test.js canvas.test.js capture.test.js
+node --test demo-journeys.test.js demo.test.js model.test.js canvas.test.js capture.test.js
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node demo-browser.test.js
 ```
 
